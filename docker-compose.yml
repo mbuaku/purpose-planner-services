@@ -13,10 +13,39 @@ services:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/purpose-planner-auth
       - JWT_SECRET=dev_jwt_secret
+      - BASE_URL=http://localhost:3001
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
     depends_on:
       - mongodb
     volumes:
       - ./auth-service:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - purpose-planner-network
+
+  # Profile Service
+  profile-service:
+    build:
+      context: ./profile-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - MONGODB_URI=mongodb://mongodb:27017/purpose-planner-profile
+      - JWT_SECRET=dev_jwt_secret
+      - BASE_URL=http://localhost:3002
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - UPLOAD_DIR=uploads
+    depends_on:
+      - mongodb
+      - auth-service
+    volumes:
+      - ./profile-service:/usr/src/app
+      - ./profile-service/uploads:/usr/src/app/uploads
       - /usr/src/app/node_modules
     networks:
       - purpose-planner-network
