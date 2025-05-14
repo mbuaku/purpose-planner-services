@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Authentication Service
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/purpose-planner-auth
+      - JWT_SECRET=dev_jwt_secret
+    depends_on:
+      - mongodb
+    volumes:
+      - ./auth-service:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - purpose-planner-network
+
+  # MongoDB Service
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - purpose-planner-network
+
+  # API Gateway (for future use)
+  # api-gateway:
+  #   build:
+  #     context: ./api-gateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - auth-service
+  #   networks:
+  #     - purpose-planner-network
+
+networks:
+  purpose-planner-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

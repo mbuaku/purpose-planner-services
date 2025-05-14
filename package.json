@@ -1,0 +1,33 @@
+{
+  "name": "purpose-planner-services",
+  "version": "1.0.0",
+  "description": "Microservices backend for Purpose Planner application",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "auth": "cd auth-service && npm run dev",
+    "profile": "cd profile-service && npm run dev",
+    "spiritual": "cd spiritual-service && npm run dev",
+    "financial": "cd financial-service && npm run dev",
+    "schedule": "cd schedule-service && npm run dev",
+    "dashboard": "cd dashboard-service && npm run dev",
+    "notification": "cd notification-service && npm run dev"
+  },
+  "workspaces": [
+    "auth-service",
+    "profile-service",
+    "spiritual-service",
+    "financial-service",
+    "schedule-service",
+    "dashboard-service",
+    "notification-service",
+    "shared"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "eslint": "^8.42.0",
+    "prettier": "^2.8.8"
+  }
+}
