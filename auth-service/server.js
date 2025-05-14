@@ -14,12 +14,37 @@ app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB Connected'))
-.catch(err => console.log('MongoDB Connection Error:', err));
+// Temporarily disabled for development without MongoDB
+console.log('MongoDB connection disabled for development');
+
+// Mock database for development without MongoDB
+const inMemoryUsers = [];
+global.inMemoryDB = {
+  users: inMemoryUsers,
+  addUser: (user) => {
+    // Check for duplicate email
+    const existingUser = inMemoryUsers.find(u => u.email === user.email);
+    if (existingUser) {
+      throw new Error('Email already in use');
+    }
+    const newUser = { ...user, _id: Date.now().toString() };
+    inMemoryUsers.push(newUser);
+    return newUser;
+  },
+  findUserByEmail: (email) => {
+    return inMemoryUsers.find(u => u.email === email) || null;
+  },
+  findUserById: (id) => {
+    return inMemoryUsers.find(u => u._id === id) || null;
+  }
+};
+
+// mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
+//   useNewUrlParser: true,
+//   useUnifiedTopology: true,
+// })
+// .then(() => console.log('MongoDB Connected'))
+// .catch(err => console.log('MongoDB Connection Error:', err));
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -30,13 +55,217 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Welcome route
+// Welcome route with HTML test form
 app.get('/', (req, res) => {
-  res.json({
-    service: 'Purpose Planner Auth Service',
-    version: '1.0.0',
-    description: 'Authentication and authorization service for Purpose Planner'
-  });
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Purpose Planner Auth Service</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        h1, h2 {
+          color: #4F46E5;
+        }
+        .api-info {
+          background-color: #f9f9f9;
+          border-left: 4px solid #4F46E5;
+          padding: 15px;
+          margin-bottom: 20px;
+        }
+        .test-panel {
+          background-color: #f0f0f0;
+          border-radius: 5px;
+          padding: 20px;
+          margin-top: 20px;
+        }
+        .form-group {
+          margin-bottom: 15px;
+        }
+        label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: bold;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+        button {
+          background-color: #4F46E5;
+          color: white;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .response {
+          margin-top: 20px;
+          padding: 15px;
+          background-color: #f0f0f0;
+          border-radius: 4px;
+          white-space: pre-wrap;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Purpose Planner Auth Service</h1>
+      <div class="api-info">
+        <p><strong>Version:</strong> 1.0.0</p>
+        <p><strong>Description:</strong> Authentication and authorization service for Purpose Planner</p>
+      </div>
+      
+      <h2>Test API Endpoints</h2>
+      
+      <div class="test-panel">
+        <h3>Register</h3>
+        <form id="registerForm">
+          <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" required>
+          </div>
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required>
+          </div>
+          <button type="submit">Register</button>
+        </form>
+        <div id="registerResponse" class="response"></div>
+      </div>
+      
+      <div class="test-panel">
+        <h3>Login</h3>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" required>
+          </div>
+          <button type="submit">Login</button>
+        </form>
+        <div id="loginResponse" class="response"></div>
+      </div>
+      
+      <div class="test-panel">
+        <h3>Get Profile</h3>
+        <form id="profileForm">
+          <div class="form-group">
+            <label for="token">JWT Token</label>
+            <input type="text" id="token" required>
+          </div>
+          <button type="submit">Get Profile</button>
+        </form>
+        <div id="profileResponse" class="response"></div>
+      </div>
+      
+      <script>
+        // Register Form
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const response = document.getElementById('registerResponse');
+          response.textContent = 'Sending request...';
+          
+          try {
+            const res = await fetch('/api/auth/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+              }),
+            });
+            
+            const data = await res.json();
+            response.textContent = JSON.stringify(data, null, 2);
+          } catch (error) {
+            response.textContent = 'Error: ' + error.message;
+          }
+        });
+        
+        // Login Form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const response = document.getElementById('loginResponse');
+          response.textContent = 'Sending request...';
+          
+          try {
+            const res = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value,
+              }),
+            });
+            
+            const data = await res.json();
+            response.textContent = JSON.stringify(data, null, 2);
+            
+            // If login successful, populate the token field
+            if (data.success && data.data && data.data.token) {
+              document.getElementById('token').value = data.data.token;
+            }
+          } catch (error) {
+            response.textContent = 'Error: ' + error.message;
+          }
+        });
+        
+        // Profile Form
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const response = document.getElementById('profileResponse');
+          response.textContent = 'Sending request...';
+          
+          const token = document.getElementById('token').value;
+          
+          try {
+            const res = await fetch('/api/auth/profile', {
+              method: 'GET',
+              headers: {
+                'Authorization': 'Bearer ' + token,
+              },
+            });
+            
+            const data = await res.json();
+            response.textContent = JSON.stringify(data, null, 2);
+          } catch (error) {
+            response.textContent = 'Error: ' + error.message;
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `);
 });
 
 // API routes
