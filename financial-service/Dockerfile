@@ -10,6 +10,6 @@ COPY . .
 
 RUN mkdir -p uploads
 
-EXPOSE 3004
+EXPOSE 3006
 
 CMD ["npm", "run", "dev"]

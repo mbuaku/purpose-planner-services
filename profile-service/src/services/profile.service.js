@@ -408,7 +408,7 @@ async function uploadProfileImage(userId, file) {
     await fs.writeFile(filePath, file.buffer);
     
     // Generate the URL for the file
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3002';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3004';
     const fileUrl = `${baseUrl}/uploads/${userId}/${filename}`;
     
     // Update the profile with the new image URL
@@ -472,7 +472,7 @@ async function uploadCoverImage(userId, file) {
     await fs.writeFile(filePath, file.buffer);
     
     // Generate the URL for the file
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3002';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3004';
     const fileUrl = `${baseUrl}/uploads/${userId}/${filename}`;
     
     // Update the profile with the new image URL

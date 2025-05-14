@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs').promises;
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3004;
 
 // Import routes
 const profileRoutes = require('./src/routes/profile.routes');
