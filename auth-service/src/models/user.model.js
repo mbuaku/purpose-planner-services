@@ -23,7 +23,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function() {
+        // Password is not required for social logins
+        return !this.googleId;
+      },
       minlength: [8, 'Password must be at least 8 characters'],
     },
     profileImage: {
@@ -47,6 +50,29 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
     lastLogin: Date,
+    // Social login fields
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null/undefined values (not all users will have a googleId)
+    },
+    socialProfile: {
+      provider: String,
+      id: String,
+      displayName: String,
+      name: {
+        familyName: String,
+        givenName: String,
+      },
+      emails: [{
+        value: String,
+        verified: Boolean
+      }],
+      photos: [{
+        value: String
+      }],
+      _json: mongoose.Schema.Types.Mixed
+    }
   },
   { timestamps: true }
 );

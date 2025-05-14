@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const passport = require('passport');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,8 +11,12 @@ const PORT = process.env.PORT || 3001;
 const authRoutes = require('./src/routes/auth.routes');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Required for OAuth
 
 // Connect to MongoDB
 // Temporarily disabled for development without MongoDB
@@ -167,6 +172,20 @@ app.get('/', (req, res) => {
           </div>
           <button type="submit">Login</button>
         </form>
+        <div class="social-login" style="margin-top: 20px; text-align: center;">
+          <p style="margin-bottom: 10px;">-- OR --</p>
+          <a href="/api/auth/google" style="display: inline-block; background-color: #DB4437; color: white; padding: 10px 15px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+            <div style="display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" style="margin-right: 8px;">
+                <path fill="#ffffff" d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z"></path>
+                <path fill="#ffffff" d="M17.64 9.2c0-.74-.06-1.28-.19-1.84H9v3.34h4.96c-.1.83-.64 2.08-1.84 2.92l2.84 2.2c1.7-1.57 2.68-3.88 2.68-6.62z"></path>
+                <path fill="#ffffff" d="M3.88 10.78A5.54 5.54 0 0 1 3.58 9c0-.62.11-1.22.29-1.78L.96 4.96A9.008 9.008 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z"></path>
+                <path fill="#ffffff" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.84-2.2c-.76.53-1.78.9-3.12.9-2.38 0-4.4-1.57-5.12-3.74L.97 13.04C2.45 15.98 5.48 18 9 18z"></path>
+              </svg>
+              Login with Google
+            </div>
+          </a>
+        </div>
         <div id="loginResponse" class="response"></div>
       </div>
       
@@ -183,6 +202,25 @@ app.get('/', (req, res) => {
       </div>
       
       <script>
+        // Check for token in URL param (for social login callback)
+        function getTokenFromUrl() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const token = urlParams.get('token');
+          if (token) {
+            // Store token in local storage or input field
+            document.getElementById('token').value = token;
+            
+            // Call profile endpoint to get user info
+            document.getElementById('profileForm').dispatchEvent(new Event('submit'));
+            
+            // Remove token from URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+        
+        // Run on page load
+        window.addEventListener('load', getTokenFromUrl);
+        
         // Register Form
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
           e.preventDefault();

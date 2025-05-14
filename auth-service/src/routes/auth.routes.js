@@ -1,8 +1,12 @@
 const express = require('express');
+const passport = require('passport');
 const authController = require('../controllers/auth.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
 const router = express.Router();
+
+// Get passport config
+const passportConfig = require('../config/passport')(router);
 
 /**
  * @route POST /api/auth/register
@@ -58,5 +62,48 @@ router.get('/check', authMiddleware.authenticate, (req, res) => {
     user: req.user,
   });
 });
+
+/**
+ * @route GET /api/auth/google
+ * @desc Authenticate with Google
+ * @access Public
+ */
+router.get(
+  '/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+  })
+);
+
+/**
+ * @route GET /api/auth/google/callback
+ * @desc Google auth callback
+ * @access Public
+ */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: '/' }),
+  (req, res) => {
+    try {
+      // Generate JWT token
+      const token = passportConfig.generateToken(req.user);
+      
+      // User is now authenticated
+      // Redirect to frontend with token
+      const clientRedirectUrl = process.env.CLIENT_REDIRECT_URL || `${process.env.BASE_URL}/?token=${token}`;
+      
+      // Add token to URL as parameter
+      const redirectUrl = clientRedirectUrl.includes('?') 
+        ? `${clientRedirectUrl}&token=${token}`
+        : `${clientRedirectUrl}?token=${token}`;
+      
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Google auth callback error:', error);
+      res.redirect('/');
+    }
+  }
+);
 
 module.exports = router;
