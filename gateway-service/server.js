@@ -59,6 +59,9 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use(compression()); // Compress responses
 app.use(responseTime()); // Add X-Response-Time header
 
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Request logging
 app.use(morgan('combined', {
   stream: {

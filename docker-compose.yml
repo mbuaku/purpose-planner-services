@@ -60,17 +60,31 @@ services:
     networks:
       - purpose-planner-network
 
-  # API Gateway (for future use)
-  # api-gateway:
-  #   build:
-  #     context: ./api-gateway
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - auth-service
-  #   networks:
-  #     - purpose-planner-network
+  # API Gateway
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=dev_jwt_secret
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - FINANCIAL_SERVICE_URL=http://financial-service:3002
+      - PROFILE_SERVICE_URL=http://profile-service:3004
+      - SPIRITUAL_SERVICE_URL=http://spiritual-service:3003
+      - SCHEDULE_SERVICE_URL=http://schedule-service:3005
+      - DASHBOARD_SERVICE_URL=http://dashboard-service:3006
+    depends_on:
+      - auth-service
+      - profile-service
+    volumes:
+      - ./gateway-service:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - purpose-planner-network
 
 networks:
   purpose-planner-network:
