@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schedule-service
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schedule-service
+  template:
+    metadata:
+      labels:
+        app: schedule-service
+    spec:
+      containers:
+      - name: schedule-service
+        image: mbuaku/purpose-planner-services/schedule-service:latest
+        ports:
+        - containerPort: 3005
+        env:
+        - name: PORT
+          value: "3005"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: mongodb-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: schedule-service
+  namespace: development
+spec:
+  selector:
+    app: schedule-service
+  ports:
+  - port: 3005
+    targetPort: 3005
+  type: ClusterIP

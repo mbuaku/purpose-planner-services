@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spiritual-service
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spiritual-service
+  template:
+    metadata:
+      labels:
+        app: spiritual-service
+    spec:
+      containers:
+      - name: spiritual-service
+        image: mbuaku/purpose-planner-services/spiritual-service:latest
+        ports:
+        - containerPort: 3003
+        env:
+        - name: PORT
+          value: "3003"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: mongodb-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spiritual-service
+  namespace: development
+spec:
+  selector:
+    app: spiritual-service
+  ports:
+  - port: 3003
+    targetPort: 3003
+  type: ClusterIP

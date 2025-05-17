@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-service
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: financial-service
+  template:
+    metadata:
+      labels:
+        app: financial-service
+    spec:
+      containers:
+      - name: financial-service
+        image: mbuaku/purpose-planner-services/financial-service:latest
+        ports:
+        - containerPort: 3002
+        env:
+        - name: PORT
+          value: "3002"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: mongodb-uri
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: financial-service
+  namespace: development
+spec:
+  selector:
+    app: financial-service
+  ports:
+  - port: 3002
+    targetPort: 3002
+  type: ClusterIP
