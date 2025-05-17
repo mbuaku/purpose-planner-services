@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    tools {
+        nodejs 'NodeJS-18' // Update this to match your Jenkins NodeJS installation name
+    }
+    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKERHUB_REPO = 'mbuaku/purpose-planner-services'
@@ -10,6 +14,38 @@ pipeline {
     }
     
     stages {
+        stage('Setup') {
+            steps {
+                sh '''
+                    # Add common paths where tools might be installed
+                    export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
+                    
+                    echo "PATH: $PATH"
+                    echo "Current user: $(whoami)"
+                    echo "Home directory: $HOME"
+                    echo "Working directory: $(pwd)"
+                    
+                    # Check for Node/NPM
+                    echo "Node version: $(node --version 2>&1 || echo 'Node not found')"
+                    echo "NPM version: $(npm --version 2>&1 || echo 'NPM not found')"
+                    
+                    # Check for Docker
+                    echo "Docker version: $(docker --version 2>&1 || echo 'Docker not found')"
+                    
+                    # Check if docker group exists and current user is in it
+                    echo "Groups: $(groups)"
+                    
+                    # Find where tools are installed
+                    echo "Finding node installations:"
+                    find /usr -name node -type f 2>/dev/null || echo "No node found in /usr"
+                    echo "Finding npm installations:"
+                    find /usr -name npm -type f 2>/dev/null || echo "No npm found in /usr"
+                    echo "Finding docker installations:"
+                    find /usr -name docker -type f 2>/dev/null || echo "No docker found in /usr"
+                '''
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 checkout scm

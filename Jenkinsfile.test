@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    
+    tools {
+        nodejs 'NodeJS' // Change this to match your Jenkins NodeJS installation name
+    }
+    
+    stages {
+        stage('Test Environment') {
+            steps {
+                sh 'echo "Testing basic commands"'
+                sh 'pwd'
+                sh 'whoami'
+                sh 'env | sort'
+                
+                script {
+                    // Test Node.js
+                    try {
+                        sh 'node --version'
+                        sh 'npm --version'
+                        echo "Node.js is available"
+                    } catch (Exception e) {
+                        echo "Node.js is NOT available: ${e.message}"
+                    }
+                    
+                    // Test Docker
+                    try {
+                        sh 'docker --version'
+                        echo "Docker is available"
+                    } catch (Exception e) {
+                        echo "Docker is NOT available: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+}
