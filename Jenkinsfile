@@ -13,25 +13,33 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
+                    echo "Environment Setup:"
+                    echo "=================="
                     echo "Node version: $(node --version)"
                     echo "NPM version: $(npm --version)"
                     echo "Current user: $(whoami)"
                     echo "Groups: $(groups)"
+                    echo "Working directory: $(pwd)"
                     
-                    # Try to find docker binary
-                    which docker || echo "Docker not in PATH"
-                    
-                    # Check if docker is installed via snap
-                    if [ -f /snap/bin/docker ]; then
-                        echo "Docker is installed via snap"
-                        # Try using full path
-                        /snap/bin/docker --version || echo "Snap docker not accessible"
+                    # Check Docker availability
+                    if command -v docker &> /dev/null; then
+                        echo "Docker version: $(docker --version 2>&1 || echo 'Docker command failed')"
+                    else
+                        echo "Docker not found in PATH"
+                        # Try common Docker locations
+                        for docker_path in /usr/bin/docker /usr/local/bin/docker /snap/bin/docker; do
+                            if [ -f "$docker_path" ]; then
+                                echo "Found Docker at: $docker_path"
+                                $docker_path --version 2>&1 || echo "Cannot execute Docker at $docker_path"
+                            fi
+                        done
                     fi
                     
-                    # Check if docker is in other locations
-                    if [ -f /usr/bin/docker ]; then
-                        echo "Docker found at /usr/bin/docker"
-                        /usr/bin/docker --version || echo "Docker not accessible"
+                    # Check Node.js version compatibility
+                    NODE_MAJOR=$(node --version | cut -d. -f1 | sed 's/v//')
+                    if [ "$NODE_MAJOR" -lt 14 ]; then
+                        echo "WARNING: Node.js version is too old. Need Node.js 14+ but have $(node --version)"
+                        echo "Most dependencies require Node.js 14 or higher"
                     fi
                 '''
             }
@@ -45,12 +53,21 @@ pipeline {
             }
         }
         
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    echo "Installing dependencies from root..."
+                    # Use npm install instead of ci to handle workspace dependencies
+                    npm install --no-fund
+                '''
+            }
+        }
+        
         stage('Test Services') {
             parallel {
                 stage('Auth Service') {
                     steps {
                         dir('auth-service') {
-                            sh 'npm ci'
                             sh 'npm test || echo "No tests found"'
                         }
                     }
@@ -58,7 +75,6 @@ pipeline {
                 stage('Gateway Service') {
                     steps {
                         dir('gateway-service') {
-                            sh 'npm ci'
                             sh 'npm test || echo "No tests found"'
                         }
                     }
@@ -66,7 +82,6 @@ pipeline {
                 stage('Financial Service') {
                     steps {
                         dir('financial-service') {
-                            sh 'npm ci'
                             sh 'npm test || echo "No tests found"'
                         }
                     }
@@ -79,7 +94,6 @@ pipeline {
                             
                             for (service in services) {
                                 dir(service) {
-                                    sh 'npm ci'
                                     sh 'npm test || echo "No tests found"'
                                 }
                             }
