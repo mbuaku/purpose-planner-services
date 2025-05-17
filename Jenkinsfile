@@ -13,31 +13,26 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
-                    # Add common paths where tools might be installed
-                    export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
-                    
-                    echo "PATH: $PATH"
+                    echo "Node version: $(node --version)"
+                    echo "NPM version: $(npm --version)"
                     echo "Current user: $(whoami)"
-                    echo "Home directory: $HOME"
-                    echo "Working directory: $(pwd)"
-                    
-                    # Check for Node/NPM
-                    echo "Node version: $(node --version 2>&1 || echo 'Node not found')"
-                    echo "NPM version: $(npm --version 2>&1 || echo 'NPM not found')"
-                    
-                    # Check for Docker
-                    echo "Docker version: $(docker --version 2>&1 || echo 'Docker not found')"
-                    
-                    # Check if docker group exists and current user is in it
                     echo "Groups: $(groups)"
                     
-                    # Find where tools are installed
-                    echo "Finding node installations:"
-                    find /usr -name node -type f 2>/dev/null || echo "No node found in /usr"
-                    echo "Finding npm installations:"
-                    find /usr -name npm -type f 2>/dev/null || echo "No npm found in /usr"
-                    echo "Finding docker installations:"
-                    find /usr -name docker -type f 2>/dev/null || echo "No docker found in /usr"
+                    # Try to find docker binary
+                    which docker || echo "Docker not in PATH"
+                    
+                    # Check if docker is installed via snap
+                    if [ -f /snap/bin/docker ]; then
+                        echo "Docker is installed via snap"
+                        # Try using full path
+                        /snap/bin/docker --version || echo "Snap docker not accessible"
+                    fi
+                    
+                    # Check if docker is in other locations
+                    if [ -f /usr/bin/docker ]; then
+                        echo "Docker found at /usr/bin/docker"
+                        /usr/bin/docker --version || echo "Docker not accessible"
+                    fi
                 '''
             }
         }
@@ -211,7 +206,13 @@ pipeline {
             echo 'Backend pipeline failed!'
         }
         always {
-            sh 'docker logout'
+            script {
+                try {
+                    sh 'docker logout || echo "Docker logout failed - continuing"'
+                } catch (Exception e) {
+                    echo "Docker logout error: ${e.message}"
+                }
+            }
         }
     }
 }
