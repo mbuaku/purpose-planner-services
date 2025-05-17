@@ -1,10 +1,6 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS-18' // Update this to match your Jenkins NodeJS installation name
-    }
-    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKERHUB_REPO = 'mbuaku/purpose-planner-services'
