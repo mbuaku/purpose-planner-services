@@ -226,8 +226,9 @@ pipeline {
                     echo "Checking pod status..."
                     $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
                     echo ""
-                    echo "Checking logs from CrashLoopBackOff pods..."
-                    for pod in \$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'); do
+                    echo "Checking logs from failing pods..."
+                    FAILING_PODS=\$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print \$1}')
+                    for pod in \$FAILING_PODS; do
                         echo "=== Logs for \$pod ==="
                         $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG logs \$pod -n development --tail=20 || echo "No logs available"
                         echo ""
@@ -244,7 +245,8 @@ pipeline {
                         $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get events -n development --sort-by=.lastTimestamp | tail -20
                         echo ""
                         echo "=== Describe Failed Pods ==="
-                        for pod in \$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'); do
+                        FAILING_PODS=\$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print \$1}')
+                        for pod in \$FAILING_PODS; do
                             echo "--- Describing \$pod ---"
                             $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG describe pod \$pod -n development | grep -A 20 "Events:"
                             echo ""
