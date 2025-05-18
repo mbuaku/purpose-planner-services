@@ -171,25 +171,38 @@ pipeline {
             // }
             steps {
                 script {
+                    // Install kubectl if not available
+                    sh '''
+                        if ! command -v kubectl &> /dev/null; then
+                            echo "kubectl not found, installing locally..."
+                            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            mv kubectl $WORKSPACE/kubectl
+                            export PATH=$WORKSPACE:$PATH
+                        else
+                            echo "kubectl already installed: $(kubectl version --client --short)"
+                        fi
+                    '''
+                    
                     sh 'mkdir -p ~/.kube'
                     sh 'cp $KUBECONFIG ~/.kube/config'
                     
                     // Create namespace
-                    sh 'kubectl create namespace development --dry-run=client -o yaml | kubectl apply -f -'
+                    sh '$WORKSPACE/kubectl create namespace development --dry-run=client -o yaml | $WORKSPACE/kubectl apply -f -'
                     
                     // Deploy MongoDB and Redis
-                    sh 'kubectl apply -f k8s-manifests/infrastructure.yaml'
+                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/infrastructure.yaml'
                     
                     // Create secrets
                     sh """
-                        kubectl create secret generic app-secrets \
+                        $WORKSPACE/kubectl create secret generic app-secrets \
                             --from-literal=jwt-secret=your-secret-key-here \
                             --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \
-                            -n development --dry-run=client -o yaml | kubectl apply -f -
+                            -n development --dry-run=client -o yaml | $WORKSPACE/kubectl apply -f -
                     """
                     
                     // Deploy all services
-                    sh 'kubectl apply -f k8s-manifests/services/'
+                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/services/'
                 }
             }
         }
@@ -200,9 +213,9 @@ pipeline {
             // }
             steps {
                 sh """
-                    kubectl wait --for=condition=available --timeout=300s deployment --all -n development
-                    kubectl get pods -n development
-                    kubectl get svc -n development
+                    $WORKSPACE/kubectl wait --for=condition=available --timeout=300s deployment --all -n development
+                    $WORKSPACE/kubectl get pods -n development
+                    $WORKSPACE/kubectl get svc -n development
                     echo ""
                     echo "======================================"
                     echo "Backend Services Deployment Complete!"
