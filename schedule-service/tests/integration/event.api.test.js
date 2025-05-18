@@ -8,8 +8,15 @@ jest.mock('mongoose', () => ({
     once: jest.fn(),
     close: jest.fn()
   },
-  Schema: jest.fn().mockImplementation(() => ({})),
-  model: jest.fn().mockImplementation(() => ({}))
+  Schema: jest.fn().mockImplementation(() => ({
+    Types: {
+      ObjectId: jest.fn()
+    }
+  })),
+  model: jest.fn().mockImplementation(() => ({})),
+  Types: {
+    ObjectId: jest.fn()
+  }
 }));
 
 const app = require('../../server');

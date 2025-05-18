@@ -13,7 +13,7 @@ describe('Dashboard Service', () => {
     
     // Setup mock data
     mockUser = {
-      id: 'user123'
+      id: 'test123'
     };
     
     // Setup in-memory database for testing
@@ -30,6 +30,7 @@ describe('Dashboard Service', () => {
       
       // Assert
       expect(result).toBeDefined();
+      expect(result._id).toBeDefined(); // Just check ID exists, not its value
       expect(result.userId).toBe(mockUser.id);
       expect(result.isDefault).toBe(true);
       expect(Array.isArray(result.widgets)).toBe(true);
