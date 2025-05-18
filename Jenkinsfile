@@ -226,16 +226,29 @@ pipeline {
                     echo "Checking pod status..."
                     $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
                     echo ""
-                    echo "Checking pod descriptions for failed pods..."
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG describe pods -n development | grep -A 10 -B 5 "Failed"
-                    echo ""
-                    echo "Waiting for deployments..."
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=120s deployment --all -n development || {
-                        echo "Some deployments failed to become ready. Checking pod status..."
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
+                    echo "Checking logs from CrashLoopBackOff pods..."
+                    for pod in \$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'); do
+                        echo "=== Logs for \$pod ==="
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG logs \$pod -n development --tail=20 || echo "No logs available"
                         echo ""
-                        echo "Checking events..."
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get events -n development --sort-by=.lastTimestamp
+                    done
+                    echo ""
+                    echo "Waiting for deployments (timeout: 60s)..."
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=60s deployment --all -n development || {
+                        echo "Some deployments failed to become ready. Checking details..."
+                        echo ""
+                        echo "=== Failed Pods Status ==="
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -v Running
+                        echo ""
+                        echo "=== Recent Events ==="
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get events -n development --sort-by=.lastTimestamp | tail -20
+                        echo ""
+                        echo "=== Describe Failed Pods ==="
+                        for pod in \$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development -o jsonpath='{.items[?(@.status.phase!="Running")].metadata.name}'); do
+                            echo "--- Describing \$pod ---"
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG describe pod \$pod -n development | grep -A 20 "Events:"
+                            echo ""
+                        done
                         exit 1
                     }
                     $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get svc -n development
