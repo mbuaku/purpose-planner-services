@@ -490,11 +490,11 @@ app.get('/', (req, res) => {
           const newRow = document.createElement('div');
           newRow.className = 'category-row';
           newRow.style.marginBottom = '10px';
-          newRow.innerHTML = `
+          newRow.innerHTML = \`
             <input type="text" placeholder="Category" required>
             <input type="number" placeholder="Amount" required min="0" step="0.01">
             <button type="button" class="remove-category">Remove</button>
-          `;
+          \`;
           categoriesDiv.appendChild(newRow);
           
           // Add event listener to the remove button

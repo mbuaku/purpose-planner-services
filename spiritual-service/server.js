@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3005;
 
 // Import routes
 const bibleReadingRoutes = require('./src/routes/bible-reading.routes');
-const readingPlanRoutes = require('./src/routes/reading-plan.routes');
+// const readingPlanRoutes = require('./src/routes/reading-plan.routes'); // Commented out - file doesn't exist
 const prayerRoutes = require('./src/routes/prayer.routes');
 const prayerSessionRoutes = require('./src/routes/prayer-session.routes');
 const journalRoutes = require('./src/routes/journal.routes');
@@ -634,7 +634,7 @@ app.get('/', (req, res) => {
 
 // API routes
 app.use('/api/bible-readings', bibleReadingRoutes);
-app.use('/api/reading-plans', readingPlanRoutes);
+// app.use('/api/reading-plans', readingPlanRoutes); // Commented out - file doesn't exist
 app.use('/api/prayers', prayerRoutes);
 app.use('/api/prayer-sessions', prayerSessionRoutes);
 app.use('/api/journals', journalRoutes);
