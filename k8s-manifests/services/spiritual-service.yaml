@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: spiritual-service
-        image: mbuaku/purpose-planner-services/spiritual-service:latest
+        image: mbuaku/purpose-planner-services:spiritual-service-latest
         ports:
         - containerPort: 3003
         env:
@@ -31,6 +31,30 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service

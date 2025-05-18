@@ -1,0 +1,230 @@
+---
+# MongoDB Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: development
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mongodb-backup
+            image: mongo:6
+            command:
+            - /bin/bash
+            - -c
+            - |
+              DATE=$(date +%Y%m%d_%H%M%S)
+              mongodump --host mongodb:27017 \
+                --username admin \
+                --password password123 \
+                --authenticationDatabase admin \
+                --db purpose-planner \
+                --out /backup/mongodb-backup-$DATE
+              
+              # Keep only last 7 days of backups
+              find /backup -name "mongodb-backup-*" -mtime +7 -exec rm -rf {} \;
+              
+              echo "Backup completed: mongodb-backup-$DATE"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: mongodb-backup-pvc
+---
+# Redis Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: development
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: redis-backup
+            image: redis:7-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              DATE=$(date +%Y%m%d_%H%M%S)
+              redis-cli -h redis BGSAVE
+              sleep 10
+              cp /data/dump.rdb /backup/redis-backup-$DATE.rdb
+              
+              # Keep only last 7 days of backups
+              find /backup -name "redis-backup-*.rdb" -mtime +7 -exec rm -f {} \;
+              
+              echo "Backup completed: redis-backup-$DATE.rdb"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+            - name: redis-data
+              mountPath: /data
+              readOnly: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 250m
+                memory: 256Mi
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: redis-backup-pvc
+          - name: redis-data
+            persistentVolumeClaim:
+              claimName: redis-pvc
+---
+# MongoDB Backup PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-backup-pvc
+  namespace: development
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: backup-storage
+---
+# Redis Backup PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-backup-pvc
+  namespace: development
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: backup-storage
+---
+# Backup Monitoring Job
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-monitor
+  namespace: development
+spec:
+  schedule: "0 6 * * *"  # Daily at 6 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup-monitor
+            image: alpine:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Check MongoDB backups
+              MONGODB_BACKUPS=$(find /mongodb-backup -name "mongodb-backup-*" -mtime -1 | wc -l)
+              echo "MongoDB backups in last 24 hours: $MONGODB_BACKUPS"
+              
+              # Check Redis backups
+              REDIS_BACKUPS=$(find /redis-backup -name "redis-backup-*.rdb" -mtime -1 | wc -l)
+              echo "Redis backups in last 24 hours: $REDIS_BACKUPS"
+              
+              # Alert if no recent backups
+              if [ $MONGODB_BACKUPS -eq 0 ]; then
+                echo "WARNING: No MongoDB backup found in last 24 hours!"
+              fi
+              
+              if [ $REDIS_BACKUPS -eq 0 ]; then
+                echo "WARNING: No Redis backup found in last 24 hours!"
+              fi
+              
+              # Show backup sizes
+              echo "MongoDB backup sizes:"
+              du -sh /mongodb-backup/*
+              
+              echo "Redis backup sizes:"
+              du -sh /redis-backup/*
+            volumeMounts:
+            - name: mongodb-backup
+              mountPath: /mongodb-backup
+              readOnly: true
+            - name: redis-backup
+              mountPath: /redis-backup
+              readOnly: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+          restartPolicy: OnFailure
+          volumes:
+          - name: mongodb-backup
+            persistentVolumeClaim:
+              claimName: mongodb-backup-pvc
+          - name: redis-backup
+            persistentVolumeClaim:
+              claimName: redis-backup-pvc
+---
+# Backup Restore Job Template
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-restore-scripts
+  namespace: development
+data:
+  restore-mongodb.sh: |
+    #!/bin/bash
+    if [ -z "$1" ]; then
+      echo "Usage: $0 <backup-folder>"
+      exit 1
+    fi
+    
+    mongorestore --host mongodb:27017 \
+      --username admin \
+      --password password123 \
+      --authenticationDatabase admin \
+      --db purpose-planner \
+      --drop \
+      $1
+    
+    echo "MongoDB restore completed from $1"
+  
+  restore-redis.sh: |
+    #!/bin/sh
+    if [ -z "$1" ]; then
+      echo "Usage: $0 <backup-file>"
+      exit 1
+    fi
+    
+    # Stop Redis
+    redis-cli -h redis SHUTDOWN NOSAVE
+    
+    # Copy backup file
+    cp $1 /data/dump.rdb
+    
+    # Restart Redis (handled by Kubernetes)
+    echo "Redis restore completed from $1"

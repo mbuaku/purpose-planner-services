@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: dashboard-service
-        image: mbuaku/purpose-planner-services/dashboard-service:latest
+        image: mbuaku/purpose-planner-services:dashboard-service-latest
         ports:
         - containerPort: 3006
         env:
@@ -31,10 +31,36 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
-        - name: REDIS_HOST
-          value: "redis"
-        - name: REDIS_PORT
-          value: "6379"
+        - name: FINANCIAL_SERVICE_URL
+          value: "http://financial-service:3002"
+        - name: SPIRITUAL_SERVICE_URL
+          value: "http://spiritual-service:3003"
+        - name: SCHEDULE_SERVICE_URL
+          value: "http://schedule-service:3005"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3006
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
