@@ -1,6 +1,14 @@
 const request = require('supertest');
-const app = require('../../server');
 const jwt = require('jsonwebtoken');
+
+// Set JWT_SECRET before importing app
+process.env.JWT_SECRET = 'test-secret';
+
+// Mock axios to avoid actual network calls during tests
+jest.mock('axios');
+const axios = require('axios');
+
+const app = require('../../server');
 
 describe('Dashboard API', () => {
   let mockToken;

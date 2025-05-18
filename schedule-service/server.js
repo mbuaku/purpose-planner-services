@@ -296,19 +296,23 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start the server
-const server = app.listen(PORT, () => {
-  console.log(`Schedule Service running on port ${PORT}`);
-});
+// Start the server only if not in test environment
+let server;
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION! Shutting down...');
-  console.error(err.name, err.message);
-  server.close(() => {
-    process.exit(1);
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    console.log(`Schedule Service running on port ${PORT}`);
   });
-});
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION! Shutting down...');
+    console.error(err.name, err.message);
+    server.close(() => {
+      process.exit(1);
+    });
+  });
+}
 
 // Export for testing
 module.exports = app;

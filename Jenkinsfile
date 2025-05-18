@@ -139,8 +139,8 @@ pipeline {
                     for (service in services) {
                         dir(service) {
                             sh """
-                                docker build -t ${DOCKERHUB_REPO}/${service}:${IMAGE_TAG} .
-                                docker tag ${DOCKERHUB_REPO}/${service}:${IMAGE_TAG} ${DOCKERHUB_REPO}/${service}:latest
+                                docker build -t ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} .
+                                docker tag ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} ${DOCKERHUB_REPO}:${service}-latest
                             """
                         }
                     }
@@ -157,8 +157,8 @@ pipeline {
                     
                     for (service in services) {
                         sh """
-                            docker push ${DOCKERHUB_REPO}/${service}:${IMAGE_TAG}
-                            docker push ${DOCKERHUB_REPO}/${service}:latest
+                            docker push ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG}
+                            docker push ${DOCKERHUB_REPO}:${service}-latest
                         """
                     }
                 }

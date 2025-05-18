@@ -1,26 +1,95 @@
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
+
+// Set JWT_SECRET for tests
+process.env.JWT_SECRET = 'test-secret';
 
 // Mock mongoose to prevent actual MongoDB connections in tests
-jest.mock('mongoose', () => ({
-  connect: jest.fn().mockRejectedValue(new Error('Mock connection failed')),
-  connection: {
-    on: jest.fn(),
-    once: jest.fn(),
-    close: jest.fn()
-  },
-  Schema: jest.fn().mockImplementation(() => ({
+jest.mock('mongoose', () => {
+  const mockSchema = jest.fn();
+  mockSchema.Types = {
+    ObjectId: jest.fn()
+  };
+  mockSchema.prototype = {
+    index: jest.fn()
+  };
+  
+  return {
+    connect: jest.fn().mockRejectedValue(new Error('Mock connection failed')),
+    connection: {
+      on: jest.fn(),
+      once: jest.fn(),
+      close: jest.fn()
+    },
+    Schema: mockSchema,
+    model: jest.fn().mockImplementation(() => ({})),
     Types: {
       ObjectId: jest.fn()
     }
-  })),
-  model: jest.fn().mockImplementation(() => ({})),
-  Types: {
-    ObjectId: jest.fn()
-  }
+  };
+});
+
+// Mock auth middleware
+jest.mock('../../src/middleware/auth.middleware.js', () => {
+  const jwt = require('jsonwebtoken');
+  
+  return {
+    authenticate: jest.fn((req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required. No token provided.',
+        });
+      }
+      
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role,
+        };
+        next();
+      } catch (error) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token',
+        });
+      }
+    }),
+    authorizeAdmin: jest.fn((req, res, next) => {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.',
+        });
+      }
+      next();
+    })
+  };
+});
+
+// Mock event service
+jest.mock('../../src/services/event.service.js', () => ({
+  createEvent: jest.fn().mockResolvedValue({
+    _id: 'event123',
+    title: 'Integration Test Event',
+    description: 'Event created during integration test',
+    userId: 'user123',
+    startTime: new Date(),
+    endTime: new Date(new Date().getTime() + 3600000),
+    category: 'personal',
+    priority: 'medium'
+  }),
+  getEvents: jest.fn().mockResolvedValue([]),
+  getEventById: jest.fn().mockResolvedValue(null),
+  updateEvent: jest.fn().mockResolvedValue(null),
+  deleteEvent: jest.fn().mockResolvedValue(null)
 }));
 
 const app = require('../../server');
-const jwt = require('jsonwebtoken');
 
 describe('Event API', () => {
   let mockToken;

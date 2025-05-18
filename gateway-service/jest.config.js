@@ -9,5 +9,7 @@ module.exports = {
     '**/tests/**/*.test.js'
   ],
   moduleFileExtensions: ['js', 'json'],
-  verbose: true
+  verbose: true,
+  setupFiles: ["<rootDir>/jest.setup.js"],
+  forceExit: true
 };

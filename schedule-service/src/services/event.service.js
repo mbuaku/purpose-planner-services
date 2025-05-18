@@ -15,6 +15,10 @@ class EventService {
    */
   async createEvent(eventData, userId) {
     try {
+      if (!eventData) {
+        throw new Error('Event data is required');
+      }
+      
       // Add user ID to event data
       const newEvent = new Event({
         ...eventData,

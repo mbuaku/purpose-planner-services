@@ -1,6 +1,20 @@
 const dashboardService = require('../services/dashboard.service');
 const integrationService = require('../services/integration.service');
-const logger = require('winston');
+const winston = require('winston');
+
+// Create logger instance
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
 
 /**
  * Controller for handling dashboard-related requests
@@ -94,8 +108,10 @@ class DashboardController {
       // Get widget data from source service
       const widgetData = await integrationService.getWidgetData(widget, userId, range);
       
-      // Update widget cache
-      await widget.updateCache(widgetData);
+      // Update widget cache if method exists
+      if (widget && typeof widget.updateCache === 'function') {
+        await widget.updateCache(widgetData);
+      }
       
       res.status(200).json({
         success: true,

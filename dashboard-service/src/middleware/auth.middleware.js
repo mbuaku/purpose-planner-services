@@ -1,6 +1,20 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const logger = require('winston');
+const winston = require('winston');
+
+// Create logger instance
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
 
 /**
  * Middleware to authenticate users by verifying the JWT token

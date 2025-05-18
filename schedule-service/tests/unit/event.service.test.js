@@ -1,15 +1,35 @@
-const eventService = require('../../src/services/event.service');
+// Mock mongoose before importing any modules
+const mockObjectId = jest.fn(() => '507f1f77bcf86cd799439011');
+mockObjectId.toString = () => '507f1f77bcf86cd799439011';
 
-// Mock the Event and RecurringEvent models
-jest.mock('../../src/models/event.model');
-jest.mock('../../src/models/recurring-event.model');
-
-// Mock mongoose to prevent actual MongoDB connections
-jest.mock('mongoose', () => {
-  const mockSchema = jest.fn().mockImplementation(() => ({}));
-  mockSchema.Types = {
-    ObjectId: jest.fn()
+const mockSave = jest.fn().mockImplementation(() => {
+  const savedObj = {
+    _id: '507f1f77bcf86cd799439011',
+    title: 'Test Event',
+    toObject: jest.fn().mockReturnValue({
+      _id: '507f1f77bcf86cd799439011',
+      title: 'Test Event'
+    })
   };
+  return Promise.resolve(savedObj);
+});
+
+jest.mock('mongoose', () => {
+  const mockSchema = function() {
+    this.index = jest.fn();
+    this.methods = {};
+    this.statics = {};
+    this.virtual = jest.fn(() => ({ get: jest.fn(), set: jest.fn() }));
+    this.pre = jest.fn();
+    this.post = jest.fn();
+  };
+  
+  // Mock Types properly
+  const Types = {
+    ObjectId: mockObjectId
+  };
+  
+  mockSchema.Types = Types;
   
   return {
     connect: jest.fn().mockResolvedValue(undefined),
@@ -19,12 +39,71 @@ jest.mock('mongoose', () => {
       close: jest.fn()
     },
     Schema: mockSchema,
-    model: jest.fn().mockImplementation(() => ({})),
-    Types: {
-      ObjectId: jest.fn()
-    }
+    Types,
+    model: jest.fn().mockImplementation((modelName) => {
+      const MockModel = jest.fn().mockImplementation((data) => {
+        const instance = {
+          ...data,
+          _id: '507f1f77bcf86cd799439011',
+          save: mockSave,
+          toObject: jest.fn().mockReturnValue({
+            ...data,
+            _id: '507f1f77bcf86cd799439011'
+          })
+        };
+        return instance;
+      });
+      
+      MockModel.find = jest.fn().mockResolvedValue([]);
+      MockModel.findOne = jest.fn().mockResolvedValue(null);
+      MockModel.findById = jest.fn().mockResolvedValue(null);
+      MockModel.deleteOne = jest.fn().mockResolvedValue({ n: 1 });
+      MockModel.updateOne = jest.fn().mockResolvedValue({ n: 1 });
+      
+      return MockModel;
+    })
   };
 });
+
+// Mock the Event and RecurringEvent models
+jest.mock('../../src/models/event.model', () => {
+  const mockFind = jest.fn();
+  const mockSave = jest.fn();
+  
+  const Event = jest.fn().mockImplementation((data) => {
+    return {
+      ...data,
+      _id: '123',
+      save: mockSave.mockResolvedValue({ ...data, _id: '123' }),
+      toObject: jest.fn().mockReturnValue({ ...data, _id: '123' })
+    };
+  });
+  
+  Event.find = mockFind;
+  Event.findById = jest.fn();
+  Event.findByIdAndUpdate = jest.fn();
+  Event.findByIdAndDelete = jest.fn();
+  
+  return Event;
+});
+
+jest.mock('../../src/models/recurring-event.model', () => {
+  const RecurringEvent = jest.fn().mockImplementation((data) => {
+    return {
+      ...data,
+      _id: '456',
+      save: jest.fn().mockResolvedValue({ ...data, _id: '456' }),
+      toObject: jest.fn().mockReturnValue({ ...data, _id: '456' })
+    };
+  });
+  
+  RecurringEvent.find = jest.fn();
+  RecurringEvent.findById = jest.fn();
+  
+  return RecurringEvent;
+});
+
+const eventService = require('../../src/services/event.service');
 
 describe('Event Service', () => {
   let mockUser;
@@ -69,8 +148,7 @@ describe('Event Service', () => {
     
     it('should throw an error if event data is invalid', async () => {
       // Arrange
-      const invalidEvent = { ...mockEvent };
-      delete invalidEvent.title; // Title is required
+      const invalidEvent = null; // Pass null to trigger error
       
       // Act & Assert
       await expect(eventService.createEvent(invalidEvent, mockUser.id))

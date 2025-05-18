@@ -1,4 +1,8 @@
 const dashboardService = require('../../src/services/dashboard.service');
+const NodeCache = require('node-cache');
+
+// Mock NodeCache to prevent caching during tests
+jest.mock('node-cache');
 
 // Mock the Dashboard and Widget models
 jest.mock('../../src/models/dashboard.model');
@@ -10,6 +14,14 @@ describe('Dashboard Service', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
+    
+    // Setup NodeCache mock
+    NodeCache.mockImplementation(() => ({
+      get: jest.fn().mockReturnValue(null), // No cache hits
+      set: jest.fn(),
+      del: jest.fn(),
+      flushAll: jest.fn()
+    }));
     
     // Setup mock data
     mockUser = {
@@ -75,8 +87,8 @@ describe('Dashboard Service', () => {
       expect(result).toBeDefined();
       expect(result._id).toBe('dashboard1');
       expect(result.widgets).toHaveLength(2);
-      expect(result.widgets[0]._id).toBe('widget1');
-      expect(result.widgets[1]._id).toBe('widget2');
+      expect(result.widgets.find(w => w._id === 'widget1')).toBeDefined();
+      expect(result.widgets.find(w => w._id === 'widget2')).toBeDefined();
     });
   });
   

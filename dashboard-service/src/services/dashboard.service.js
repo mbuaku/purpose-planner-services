@@ -1,7 +1,21 @@
 const Dashboard = require('../models/dashboard.model');
 const Widget = require('../models/widget.model');
 const NodeCache = require('node-cache');
-const logger = require('winston');
+const winston = require('winston');
+
+// Create logger instance
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
 
 // Create a cache with 15-minute TTL
 const cache = new NodeCache({ stdTTL: 900, checkperiod: 60 });

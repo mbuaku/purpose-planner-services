@@ -54,18 +54,20 @@ global.inMemoryDB = {
 };
 
 // Try to connect to MongoDB, fall back to in-memory if not available
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-dashboard', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  logger.info('MongoDB Connected');
-  global.inMemoryDB = undefined; // Disable in-memory DB if MongoDB connects
-})
-.catch(err => {
-  logger.error('MongoDB Connection Error:', err);
-  logger.info('Using in-memory database instead');
-});
+if (process.env.NODE_ENV !== 'test') {
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-dashboard', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    logger.info('MongoDB Connected');
+    global.inMemoryDB = undefined; // Disable in-memory DB if MongoDB connects
+  })
+  .catch(err => {
+    logger.error('MongoDB Connection Error:', err);
+    logger.info('Using in-memory database instead');
+  });
+}
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -249,36 +251,10 @@ app.get('/', (req, res) => {
           // Create type dropdown
           let typeOptions = '';
           for (const [key, widget] of Object.entries(widgetTypes)) {
-            typeOptions += `<option value="${key}">${widget.title}</option>`;
+            typeOptions += '<option value="' + key + '">' + widget.title + '</option>';
           }
           
-          widgetDiv.innerHTML = `
-            <h4>Widget ${widgetIndex + 1}</h4>
-            <div class="form-group">
-              <label for="widgetType${widgetIndex}">Widget Type</label>
-              <select id="widgetType${widgetIndex}" class="widget-type" data-index="${widgetIndex}">
-                ${typeOptions}
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="widgetTitle${widgetIndex}">Title</label>
-              <input type="text" id="widgetTitle${widgetIndex}" class="widget-title" value="${widgetTypes[Object.keys(widgetTypes)[0]].title}">
-            </div>
-            <div class="form-group">
-              <label for="widgetRefreshInterval${widgetIndex}">Refresh Interval (minutes)</label>
-              <input type="number" id="widgetRefreshInterval${widgetIndex}" class="widget-refresh" value="15" min="5">
-            </div>
-            <div class="form-group">
-              <label for="widgetPosition${widgetIndex}">Position</label>
-              <select id="widgetPosition${widgetIndex}" class="widget-position">
-                <option value="top-left">Top Left</option>
-                <option value="top-right">Top Right</option>
-                <option value="bottom-left">Bottom Left</option>
-                <option value="bottom-right">Bottom Right</option>
-              </select>
-            </div>
-            <button type="button" class="remove-widget-btn" data-index="${widgetIndex}" style="background-color: #EF4444;">Remove</button>
-          `;
+          widgetDiv.innerHTML = '\n            <h4>Widget ' + (widgetIndex + 1) + '</h4>\n            <div class="form-group">\n              <label for="widgetType' + widgetIndex + '">Widget Type</label>\n              <select id="widgetType' + widgetIndex + '" class="widget-type" data-index="' + widgetIndex + '">\n                ' + typeOptions + '\n              </select>\n            </div>\n            <div class="form-group">\n              <label for="widgetTitle' + widgetIndex + '">Title</label>\n              <input type="text" id="widgetTitle' + widgetIndex + '" class="widget-title" value="' + widgetTypes[Object.keys(widgetTypes)[0]].title + '">\n            </div>\n            <div class="form-group">\n              <label for="widgetRefreshInterval' + widgetIndex + '">Refresh Interval (minutes)</label>\n              <input type="number" id="widgetRefreshInterval' + widgetIndex + '" class="widget-refresh" value="15" min="5">\n            </div>\n            <div class="form-group">\n              <label for="widgetPosition' + widgetIndex + '">Position</label>\n              <select id="widgetPosition' + widgetIndex + '" class="widget-position">\n                <option value="top-left">Top Left</option>\n                <option value="top-right">Top Right</option>\n                <option value="bottom-left">Bottom Left</option>\n                <option value="bottom-right">Bottom Right</option>\n              </select>\n            </div>\n            <button type="button" class="remove-widget-btn" data-index="' + widgetIndex + '" style="background-color: #EF4444;">Remove</button>\n          ';
           
           container.appendChild(widgetDiv);
           
@@ -286,7 +262,7 @@ app.get('/', (req, res) => {
           const typeSelect = widgetDiv.querySelector('.widget-type');
           typeSelect.addEventListener('change', function() {
             const index = this.getAttribute('data-index');
-            const titleInput = document.getElementById(`widgetTitle${index}`);
+            const titleInput = document.getElementById('widgetTitle' + index);
             titleInput.value = widgetTypes[this.value].title;
           });
           
@@ -387,9 +363,9 @@ app.get('/', (req, res) => {
           const widgetId = document.getElementById('widgetId').value;
           const dateRange = document.getElementById('dateRange').value;
           
-          let url = `/api/dashboard/widget/${widgetId}`;
+          let url = '/api/dashboard/widget/' + widgetId;
           if (dateRange) {
-            url += `?range=${dateRange}`;
+            url += '?range=' + dateRange;
           }
           
           try {
@@ -455,18 +431,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start the server
-const server = app.listen(PORT, () => {
-  logger.info(`Dashboard Service running on port ${PORT}`);
-});
+// Start the server only if not in test environment
+let server;
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.error('UNHANDLED REJECTION! Shutting down...', { name: err.name, message: err.message });
-  server.close(() => {
-    process.exit(1);
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    logger.info(`Dashboard Service running on port ${PORT}`);
   });
-});
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err) => {
+    logger.error('UNHANDLED REJECTION! Shutting down...', { name: err.name, message: err.message });
+    server.close(() => {
+      process.exit(1);
+    });
+  });
+}
 
 // Export for testing
 module.exports = app;

@@ -16,8 +16,8 @@ const PORT = process.env.PORT || 3000;
 // Set up logging
 const logsDir = path.join(__dirname, 'logs');
 
-// Create logs directory if it doesn't exist
-if (!fs.existsSync(logsDir)) {
+// Create logs directory if it doesn't exist (not in test environment)
+if (process.env.NODE_ENV !== 'test' && !fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir);
 }
 
@@ -28,7 +28,14 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.json()
   ),
-  transports: [
+  transports: process.env.NODE_ENV === 'test' ? [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
+  ] : [
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -62,12 +69,14 @@ app.use(responseTime()); // Add X-Response-Time header
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Request logging
-app.use(morgan('combined', {
-  stream: {
-    write: (message) => logger.info(message.trim())
-  }
-}));
+// Request logging (skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined', {
+    stream: {
+      write: (message) => logger.info(message.trim())
+    }
+  }));
+}
 
 // Load routes
 const routes = require('./src/routes');
@@ -254,37 +263,41 @@ app.use((req, res) => {
   });
 });
 
-// Start the server
-const server = app.listen(PORT, () => {
-  logger.info(`API Gateway running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Start the server only if not in test environment
+let server;
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.error('UNHANDLED REJECTION! Shutting down...', { 
-    name: err.name, 
-    message: err.message,
-    stack: err.stack
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    logger.info(`API Gateway running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
-  
-  server.close(() => {
-    process.exit(1);
-  });
-});
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  logger.error('UNCAUGHT EXCEPTION! Shutting down...', { 
-    name: err.name, 
-    message: err.message,
-    stack: err.stack
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err) => {
+    logger.error('UNHANDLED REJECTION! Shutting down...', { 
+      name: err.name, 
+      message: err.message,
+      stack: err.stack
+    });
+    
+    server.close(() => {
+      process.exit(1);
+    });
   });
-  
-  server.close(() => {
-    process.exit(1);
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    logger.error('UNCAUGHT EXCEPTION! Shutting down...', { 
+      name: err.name, 
+      message: err.message,
+      stack: err.stack
+    });
+    
+    server.close(() => {
+      process.exit(1);
+    });
   });
-});
+}
 
 // Export app for testing
 module.exports = app;
