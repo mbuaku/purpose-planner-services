@@ -166,9 +166,9 @@ pipeline {
         }
         
         stage('Deploy to Kubernetes') {
-            when {
-                branch 'master'
-            }
+            // when {
+            //     branch 'master'
+            // }
             steps {
                 script {
                     sh 'mkdir -p ~/.kube'
@@ -195,9 +195,9 @@ pipeline {
         }
         
         stage('Verify Deployment') {
-            when {
-                branch 'master'
-            }
+            // when {
+            //     branch 'master'
+            // }
             steps {
                 sh """
                     kubectl wait --for=condition=available --timeout=300s deployment --all -n development
