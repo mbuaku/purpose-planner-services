@@ -16,6 +16,7 @@ spec:
       containers:
       - name: spiritual-service
         image: mbuaku/purpose-planner-services:spiritual-service-latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3003
         env:

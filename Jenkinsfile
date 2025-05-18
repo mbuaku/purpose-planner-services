@@ -211,6 +211,18 @@ pipeline {
                     // Deploy all services
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
                     
+                    // Update deployments with specific image tags
+                    def services = ['auth-service', 'gateway-service', 'financial-service', 
+                                  'spiritual-service', 'profile-service', 'schedule-service', 
+                                  'dashboard-service']
+                    
+                    for (service in services) {
+                        sh """
+                            echo "Updating ${service} to use image tag ${IMAGE_TAG}..."
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG set image deployment/${service} ${service}=${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} -n development
+                        """
+                    }
+                    
                     // Apply namespace to all resources
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG label namespace development purpose-planner=backend --overwrite'
                 }
@@ -230,6 +242,9 @@ pipeline {
                         
                         echo "Checking pod status..."
                         $KUBECTL --kubeconfig=$KC get pods -n development
+                        echo ""
+                        echo "Checking pod images..."
+                        $KUBECTL --kubeconfig=$KC get pods -n development -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image
                         echo ""
                         
                         echo "Checking logs from failing pods..."

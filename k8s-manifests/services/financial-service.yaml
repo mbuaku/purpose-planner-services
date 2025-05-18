@@ -16,6 +16,7 @@ spec:
       containers:
       - name: financial-service
         image: mbuaku/purpose-planner-services:financial-service-latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3002
         env:
