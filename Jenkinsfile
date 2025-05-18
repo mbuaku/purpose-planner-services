@@ -139,7 +139,8 @@ pipeline {
                     for (service in services) {
                         dir(service) {
                             sh """
-                                docker build -t ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} .
+                                # Force Docker to rebuild without cache
+                                docker build --no-cache -t ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} .
                                 docker tag ${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} ${DOCKERHUB_REPO}:${service}-latest
                             """
                         }
@@ -248,6 +249,7 @@ pipeline {
                         echo ""
                         
                         echo "Checking logs from failing pods..."
+                        sleep 10  # Give pods time to start and potentially crash
                         FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
                         for pod in $FAILING_PODS; do
                             echo "=== Current logs for $pod ==="
