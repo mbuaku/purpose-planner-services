@@ -743,7 +743,7 @@ app.get('/', (req, res) => {
           const goalId = document.getElementById('contributionGoalId').value;
           
           try {
-            const res = await fetch(`/api/savings-goals/${goalId}/contributions`, {
+            const res = await fetch('/api/savings-goals/' + goalId + '/contributions', {
               method: 'POST',
               headers: {
                 'Authorization': 'Bearer ' + token,
