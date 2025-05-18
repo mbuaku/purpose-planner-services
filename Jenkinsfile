@@ -222,43 +222,58 @@ pipeline {
             //     branch 'master'
             // }
             steps {
-                sh """
-                    echo "Checking pod status..."
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
-                    echo ""
-                    echo "Checking logs from failing pods..."
-                    FAILING_PODS=\$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print \$1}')
-                    for pod in \$FAILING_PODS; do
-                        echo "=== Logs for \$pod ==="
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG logs \$pod -n development --tail=20 || echo "No logs available"
+                script {
+                    sh('''
+                        set -e
+                        export KUBECTL="$WORKSPACE/kubectl"
+                        export KC="$KUBECONFIG"
+                        
+                        echo "Checking pod status..."
+                        $KUBECTL --kubeconfig=$KC get pods -n development
                         echo ""
-                    done
-                    echo ""
-                    echo "Waiting for deployments (timeout: 60s)..."
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=60s deployment --all -n development || {
-                        echo "Some deployments failed to become ready. Checking details..."
-                        echo ""
-                        echo "=== Failed Pods Status ==="
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -v Running
-                        echo ""
-                        echo "=== Recent Events ==="
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get events -n development --sort-by=.lastTimestamp | tail -20
-                        echo ""
-                        echo "=== Describe Failed Pods ==="
-                        FAILING_PODS=\$($WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print \$1}')
-                        for pod in \$FAILING_PODS; do
-                            echo "--- Describing \$pod ---"
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG describe pod \$pod -n development | grep -A 20 "Events:"
+                        
+                        echo "Checking logs from failing pods..."
+                        FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
+                        for pod in $FAILING_PODS; do
+                            echo "=== Current logs for $pod ==="
+                            $KUBECTL --kubeconfig=$KC logs $pod -n development --tail=50 || echo "No current logs available"
+                            echo ""
+                            echo "=== Previous logs for $pod (from last crash) ==="
+                            $KUBECTL --kubeconfig=$KC logs $pod -n development --previous --tail=50 || echo "No previous logs available"
+                            echo ""
+                            echo "=== Last state for $pod ==="
+                            $KUBECTL --kubeconfig=$KC describe pod $pod -n development | grep -A4 -i "last state" || echo "No last state info"
                             echo ""
                         done
-                        exit 1
-                    }
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get svc -n development
-                    echo ""
-                    echo "======================================"
-                    echo "Backend Services Deployment Complete!"
-                    echo "======================================"
-                """
+                        
+                        echo ""
+                        echo "Waiting for deployments (timeout: 60s)..."
+                        $KUBECTL --kubeconfig=$KC wait --for=condition=available --timeout=60s deployment --all -n development || {
+                            echo "Some deployments failed to become ready. Checking details..."
+                            echo ""
+                            echo "=== Failed Pods Status ==="
+                            $KUBECTL --kubeconfig=$KC get pods -n development | grep -v Running
+                            echo ""
+                            echo "=== Recent Events ==="
+                            $KUBECTL --kubeconfig=$KC get events -n development --sort-by=.lastTimestamp | tail -20
+                            echo ""
+                            echo "=== Describe Failed Pods ==="
+                            FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
+                            for pod in $FAILING_PODS; do
+                                echo "--- Describing $pod ---"
+                                $KUBECTL --kubeconfig=$KC describe pod $pod -n development | grep -A 20 "Events:"
+                                echo ""
+                            done
+                            exit 1
+                        }
+                        
+                        $KUBECTL --kubeconfig=$KC get svc -n development
+                        echo ""
+                        echo "======================================"
+                        echo "Backend Services Deployment Complete!"
+                        echo "======================================"
+                    ''')
+                }
             }
         }
     }
