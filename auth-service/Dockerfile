@@ -5,8 +5,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json ./
-# Try to copy package-lock.json if it exists
-COPY package-lock.jso[n] ./ || true
+COPY package-lock.json* ./
 
 # Install dependencies
 RUN npm install --only=production

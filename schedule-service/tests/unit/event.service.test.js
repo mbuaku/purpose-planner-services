@@ -5,23 +5,26 @@ jest.mock('../../src/models/event.model');
 jest.mock('../../src/models/recurring-event.model');
 
 // Mock mongoose to prevent actual MongoDB connections
-jest.mock('mongoose', () => ({
-  connect: jest.fn().mockResolvedValue(undefined),
-  connection: {
-    on: jest.fn(),
-    once: jest.fn(),
-    close: jest.fn()
-  },
-  Schema: jest.fn().mockImplementation(() => ({
+jest.mock('mongoose', () => {
+  const mockSchema = jest.fn().mockImplementation(() => ({}));
+  mockSchema.Types = {
+    ObjectId: jest.fn()
+  };
+  
+  return {
+    connect: jest.fn().mockResolvedValue(undefined),
+    connection: {
+      on: jest.fn(),
+      once: jest.fn(),
+      close: jest.fn()
+    },
+    Schema: mockSchema,
+    model: jest.fn().mockImplementation(() => ({})),
     Types: {
       ObjectId: jest.fn()
     }
-  })),
-  model: jest.fn().mockImplementation(() => ({})),
-  Types: {
-    ObjectId: jest.fn()
-  }
-}));
+  };
+});
 
 describe('Event Service', () => {
   let mockUser;

@@ -87,7 +87,7 @@ app.get('/', (req, res) => {
       <title>Purpose Planner Dashboard Service</title>
       <style>
         body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
           line-height: 1.6;
           color: #333;
           max-width: 800px;
