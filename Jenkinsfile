@@ -210,6 +210,9 @@ pipeline {
                     
                     // Deploy all services
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
+                    
+                    // Apply namespace to all resources
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG label namespace development purpose-planner=backend --overwrite'
                 }
             }
         }
@@ -220,8 +223,21 @@ pipeline {
             // }
             steps {
                 sh """
-                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=300s deployment --all -n development
+                    echo "Checking pod status..."
                     $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
+                    echo ""
+                    echo "Checking pod descriptions for failed pods..."
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG describe pods -n development | grep -A 10 -B 5 "Failed"
+                    echo ""
+                    echo "Waiting for deployments..."
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=120s deployment --all -n development || {
+                        echo "Some deployments failed to become ready. Checking pod status..."
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
+                        echo ""
+                        echo "Checking events..."
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get events -n development --sort-by=.lastTimestamp
+                        exit 1
+                    }
                     $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get svc -n development
                     echo ""
                     echo "======================================"
