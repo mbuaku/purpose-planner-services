@@ -175,9 +175,14 @@ pipeline {
                     sh '''
                         if ! command -v kubectl &> /dev/null; then
                             echo "kubectl not found, installing locally..."
-                            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            mv kubectl $WORKSPACE/kubectl
+                            if [ ! -f $WORKSPACE/kubectl ]; then
+                                curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+                                chmod +x kubectl
+                                if [ -f kubectl ]; then
+                                    cp kubectl $WORKSPACE/kubectl
+                                    rm kubectl
+                                fi
+                            fi
                             export PATH=$WORKSPACE:$PATH
                         else
                             echo "kubectl already installed: $(kubectl version --client --short)"
@@ -189,6 +194,9 @@ pipeline {
                     
                     // Create namespace
                     sh '$WORKSPACE/kubectl create namespace development --dry-run=client -o yaml | $WORKSPACE/kubectl apply -f -'
+                    
+                    // Deploy persistent volumes
+                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/storage.yaml'
                     
                     // Deploy MongoDB and Redis
                     sh '$WORKSPACE/kubectl apply -f k8s-manifests/infrastructure.yaml'
