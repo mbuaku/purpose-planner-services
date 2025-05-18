@@ -189,28 +189,27 @@ pipeline {
                         fi
                     '''
                     
-                    sh 'mkdir -p ~/.kube'
-                    sh 'cp $KUBECONFIG ~/.kube/config'
+                    // No need to copy kubeconfig, use it directly with --kubeconfig flag
                     
                     // Create namespace
-                    sh '$WORKSPACE/kubectl create namespace development --dry-run=client -o yaml | $WORKSPACE/kubectl apply -f -'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create namespace development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -'
                     
                     // Deploy persistent volumes
-                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/storage.yaml'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/storage.yaml'
                     
                     // Deploy MongoDB and Redis
-                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/infrastructure.yaml'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/infrastructure.yaml'
                     
                     // Create secrets
                     sh """
-                        $WORKSPACE/kubectl create secret generic app-secrets \
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create secret generic app-secrets \
                             --from-literal=jwt-secret=your-secret-key-here \
                             --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \
-                            -n development --dry-run=client -o yaml | $WORKSPACE/kubectl apply -f -
+                            -n development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
                     """
                     
                     // Deploy all services
-                    sh '$WORKSPACE/kubectl apply -f k8s-manifests/services/'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
                 }
             }
         }
@@ -221,9 +220,9 @@ pipeline {
             // }
             steps {
                 sh """
-                    $WORKSPACE/kubectl wait --for=condition=available --timeout=300s deployment --all -n development
-                    $WORKSPACE/kubectl get pods -n development
-                    $WORKSPACE/kubectl get svc -n development
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG wait --for=condition=available --timeout=300s deployment --all -n development
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get pods -n development
+                    $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get svc -n development
                     echo ""
                     echo "======================================"
                     echo "Backend Services Deployment Complete!"
