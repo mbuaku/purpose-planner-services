@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+# Install Docker CLI
+RUN apk add --no-cache \
+    docker-cli \
+    kubectl \
+    git \
+    bash \
+    curl
+
+# Install SonarQube Scanner
+RUN npm install -g sonarqube-scanner
+
+# Set working directory
+WORKDIR /workspace
+
+# Switch to a non-root user (Jenkins will override this)
+USER 1000

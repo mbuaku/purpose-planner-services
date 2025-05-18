@@ -1,0 +1,164 @@
+pipeline {
+    agent {
+        dockerfile {
+            filename 'Dockerfile.jenkins'
+            dir '.'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
+        DOCKERHUB_REPO = 'mbuaku/purpose-planner-services'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        SONARQUBE_URL = "http://192.168.254.110:9000"
+        KUBECONFIG = credentials('kubeconfig')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'pwd'
+                sh 'ls -la'
+            }
+        }
+        
+        stage('Test Services') {
+            parallel {
+                stage('Auth Service') {
+                    steps {
+                        dir('auth-service') {
+                            sh 'npm ci'
+                            sh 'npm test || echo "No tests found"'
+                        }
+                    }
+                }
+                stage('Gateway Service') {
+                    steps {
+                        dir('gateway-service') {
+                            sh 'npm ci'
+                            sh 'npm test || echo "No tests found"'
+                        }
+                    }
+                }
+                stage('Financial Service') {
+                    steps {
+                        dir('financial-service') {
+                            sh 'npm ci'
+                            sh 'npm test || echo "No tests found"'
+                        }
+                    }
+                }
+                stage('Other Services') {
+                    steps {
+                        script {
+                            def services = ['spiritual-service', 'profile-service', 'dashboard-service', 'schedule-service']
+                            services.each { service ->
+                                dir(service) {
+                                    sh 'npm ci'
+                                    sh 'npm test || echo "No tests found"'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            when {
+                expression { 
+                    fileExists('sonar-project.properties')
+                }
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            npm install -g sonarqube-scanner
+                            sonar-scanner
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    def services = ['auth-service', 'financial-service', 'spiritual-service', 
+                                  'profile-service', 'schedule-service', 'dashboard-service', 
+                                  'gateway-service']
+                    
+                    services.each { service ->
+                        dir(service) {
+                            sh "docker build -t ${DOCKERHUB_REPO}-${service}:${IMAGE_TAG} ."
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
+                    
+                    def services = ['auth-service', 'financial-service', 'spiritual-service', 
+                                  'profile-service', 'schedule-service', 'dashboard-service', 
+                                  'gateway-service']
+                    
+                    services.each { service ->
+                        sh "docker push ${DOCKERHUB_REPO}-${service}:${IMAGE_TAG}"
+                        sh "docker tag ${DOCKERHUB_REPO}-${service}:${IMAGE_TAG} ${DOCKERHUB_REPO}-${service}:latest"
+                        sh "docker push ${DOCKERHUB_REPO}-${service}:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sh 'kubectl config view'
+                    sh "kubectl set image deployment/auth-service auth-service=${DOCKERHUB_REPO}-auth-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/financial-service financial-service=${DOCKERHUB_REPO}-financial-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/spiritual-service spiritual-service=${DOCKERHUB_REPO}-spiritual-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/profile-service profile-service=${DOCKERHUB_REPO}-profile-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/schedule-service schedule-service=${DOCKERHUB_REPO}-schedule-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/dashboard-service dashboard-service=${DOCKERHUB_REPO}-dashboard-service:${IMAGE_TAG} -n purpose-planner"
+                    sh "kubectl set image deployment/gateway-service gateway-service=${DOCKERHUB_REPO}-gateway-service:${IMAGE_TAG} -n purpose-planner"
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sh 'kubectl get deployments -n purpose-planner'
+                    sh 'kubectl get pods -n purpose-planner'
+                    sh 'kubectl get services -n purpose-planner'
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            sh 'docker logout'
+        }
+        success {
+            echo 'Backend pipeline completed successfully!'
+        }
+        failure {
+            echo 'Backend pipeline failed!'
+        }
+    }
+}

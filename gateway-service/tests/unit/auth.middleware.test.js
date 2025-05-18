@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('../../src/middleware/auth');
 
+// Set environment variable for JWT_SECRET
+process.env.JWT_SECRET = 'test-secret-key';
+
 // Mock dependencies
 jest.mock('jsonwebtoken');
 jest.mock('axios');
@@ -68,7 +71,7 @@ describe('Auth Middleware', () => {
       await authMiddleware.verifyToken(req, res, next);
       
       // Assert
-      expect(jwt.verify).toHaveBeenCalledWith(token, expect.any(String));
+      expect(jwt.verify).toHaveBeenCalledWith(token, 'test-secret-key');
       expect(req.user).toEqual(decodedToken);
       expect(next).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();

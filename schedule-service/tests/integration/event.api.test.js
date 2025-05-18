@@ -1,4 +1,17 @@
 const request = require('supertest');
+
+// Mock mongoose to prevent actual MongoDB connections in tests
+jest.mock('mongoose', () => ({
+  connect: jest.fn().mockRejectedValue(new Error('Mock connection failed')),
+  connection: {
+    on: jest.fn(),
+    once: jest.fn(),
+    close: jest.fn()
+  },
+  Schema: jest.fn().mockImplementation(() => ({})),
+  model: jest.fn().mockImplementation(() => ({}))
+}));
+
 const app = require('../../server');
 const jwt = require('jsonwebtoken');
 

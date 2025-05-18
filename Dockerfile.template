@@ -1,10 +1,11 @@
+# Base Node.js image
 FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production
@@ -12,18 +13,19 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
-# Create non-root user
+# Create a non-root user
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app
 
-# Switch to non-root user
+# Switch to nodejs user
 USER nodejs
 
-# Expose port
-EXPOSE 3004
+# Expose service port (will be set via build argument)
+ARG SERVICE_PORT
+EXPOSE ${SERVICE_PORT}
 
-# Start the application
+# Start the service
 CMD ["npm", "start"]

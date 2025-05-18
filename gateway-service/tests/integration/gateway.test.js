@@ -1,5 +1,7 @@
+// Set JWT_SECRET before importing modules
+process.env.JWT_SECRET = 'test-secret';
+
 const request = require('supertest');
-const app = require('../../server');
 const jwt = require('jsonwebtoken');
 
 // Mock services for integration tests
@@ -24,18 +26,26 @@ jest.mock('http-proxy-middleware', () => {
         
         // For auth-specific endpoints
         if (req.path.includes('/auth/profile')) {
-          return res.status(200).json({
-            success: true,
-            data: {
-              user: {
-                id: req.user.id,
-                email: req.user.email,
-                role: req.user.role,
-                firstName: 'Test',
-                lastName: 'User'
+          // Check if user exists in request (from auth middleware)
+          if (req.user) {
+            return res.status(200).json({
+              success: true,
+              data: {
+                user: {
+                  id: req.user.id,
+                  email: req.user.email,
+                  role: req.user.role,
+                  firstName: 'Test',
+                  lastName: 'User'
+                }
               }
-            }
-          });
+            });
+          } else {
+            return res.status(401).json({
+              success: false,
+              message: 'Authentication required'
+            });
+          }
         }
         
         // For other endpoints, return a default mock response
@@ -49,6 +59,8 @@ jest.mock('http-proxy-middleware', () => {
     })
   };
 });
+
+const app = require('../../server');
 
 describe('API Gateway', () => {
   let mockToken;

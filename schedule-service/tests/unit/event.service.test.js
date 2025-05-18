@@ -4,6 +4,18 @@ const eventService = require('../../src/services/event.service');
 jest.mock('../../src/models/event.model');
 jest.mock('../../src/models/recurring-event.model');
 
+// Mock mongoose to prevent actual MongoDB connections
+jest.mock('mongoose', () => ({
+  connect: jest.fn().mockResolvedValue(undefined),
+  connection: {
+    on: jest.fn(),
+    once: jest.fn(),
+    close: jest.fn()
+  },
+  Schema: jest.fn().mockImplementation(() => ({})),
+  model: jest.fn().mockImplementation(() => ({}))
+}));
+
 describe('Event Service', () => {
   let mockUser;
   let mockEvent;
