@@ -11,7 +11,7 @@ const authServiceProxy = createProxyMiddleware({
   target: services.auth.url,
   changeOrigin: true,
   pathRewrite: {
-    '^/api/auth': '/api/auth' // No rewrite needed, keeping path as is
+    '^/auth': '/api/auth' // Rewrite from /auth to /api/auth
   },
   timeout: services.auth.timeout,
   proxyTimeout: services.auth.timeout,
