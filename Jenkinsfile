@@ -244,16 +244,16 @@ pipeline {
                     echo "Deploying all services with updated configurations..."
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
                     
-                    // Apply a specific fix for auth service to ensure it picks up the Google credentials
-                    echo "Applying specific fix for auth-service configuration..."
+                    // Simply restart the auth service to ensure it picks up the Google credentials
+                    echo "Restarting auth-service to ensure it picks up the Google credentials..."
                     sh '''
-                        echo "Directly patching auth-service deployment with Google credentials from secrets..."
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG patch deployment auth-service -n development --type=json -p='[
-                            {"op": "replace", "path": "/spec/template/spec/containers/0/env/4/valueFrom/secretKeyRef/key", "value": "google-client-id"},
-                            {"op": "replace", "path": "/spec/template/spec/containers/0/env/5/valueFrom/secretKeyRef/key", "value": "google-client-secret"}
-                        ]'
+                        # Force restart auth-service one more time after everything is deployed
                         echo "Force restarting auth-service deployment..."
                         $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
+                        
+                        # Wait for pods to be ready
+                        echo "Waiting for auth-service to be ready..."
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n development --timeout=90s
                     '''
                     
                     // Update deployments with specific image tags
