@@ -244,7 +244,7 @@ pipeline {
                     echo "Deploying all services with updated configurations..."
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
                     
-                    # Apply a specific fix for auth service to ensure it picks up the Google credentials
+                    // Apply a specific fix for auth service to ensure it picks up the Google credentials
                     echo "Applying specific fix for auth-service configuration..."
                     sh '''
                         echo "Directly patching auth-service deployment with Google credentials from secrets..."
