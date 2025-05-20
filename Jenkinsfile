@@ -248,12 +248,11 @@ pipeline {
                     echo "Applying specific fix for auth-service configuration..."
                     sh '''
                         echo "Directly patching auth-service deployment with Google credentials from secrets..."
-                        # Ensure auth-service is properly using the credentials from secrets
                         $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG patch deployment auth-service -n development --type=json -p='[
                             {"op": "replace", "path": "/spec/template/spec/containers/0/env/4/valueFrom/secretKeyRef/key", "value": "google-client-id"},
                             {"op": "replace", "path": "/spec/template/spec/containers/0/env/5/valueFrom/secretKeyRef/key", "value": "google-client-secret"}
                         ]'
-                        # Force a restart one more time after everything is deployed
+                        echo "Force restarting auth-service deployment..."
                         $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
                     '''
                     
@@ -332,7 +331,6 @@ pipeline {
                         $KUBECTL --kubeconfig=$KC get svc -n development
                         echo ""
                         
-                        # Verify Google Auth configuration
                         echo "Checking Google Auth configuration..."
                         AUTH_POD=$($KUBECTL --kubeconfig=$KC get pods -n development -l app=auth-service -o name | head -n 1)
                         if [ ! -z "$AUTH_POD" ]; then
