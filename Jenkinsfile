@@ -338,7 +338,7 @@ pipeline {
                             $KUBECTL --kubeconfig=$KC exec $AUTH_POD -n development -- printenv | grep -i google || echo "No Google environment variables found"
                             
                             echo "Checking auth-service logs for Google auth initialization..."
-                            $KUBECTL --kubeconfig=$KC logs $AUTH_POD -n development | grep -i "google\|oauth" || echo "No Google auth logs found"
+                            $KUBECTL --kubeconfig=$KC logs $AUTH_POD -n development | grep -i "google" || echo "No Google auth logs found"
                         else
                             echo "No auth-service pods found"
                         fi
