@@ -201,13 +201,20 @@ pipeline {
                     // Deploy MongoDB and Redis
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/infrastructure.yaml'
                     
-                    // Create secrets
-                    sh """
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create secret generic app-secrets \
-                            --from-literal=jwt-secret=your-secret-key-here \
-                            --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \
-                            -n development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
-                    """
+                    // Create secrets with Google Auth credentials
+                    withCredentials([
+                        string(credentialsId: 'google-client-id', variable: 'GOOGLE_CLIENT_ID'),
+                        string(credentialsId: 'google-client-secret', variable: 'GOOGLE_CLIENT_SECRET')
+                    ]) {
+                        sh """
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create secret generic app-secrets \
+                                --from-literal=jwt-secret=your-secret-key-here \
+                                --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \
+                                --from-literal=google-client-id="${GOOGLE_CLIENT_ID}" \
+                                --from-literal=google-client-secret="${GOOGLE_CLIENT_SECRET}" \
+                                -n development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
+                        """
+                    }
                     
                     // Deploy all services
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
