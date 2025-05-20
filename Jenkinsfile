@@ -211,7 +211,7 @@ pipeline {
                         sh '''
                             echo "Creating secrets with Google Auth credentials..."
                             echo "Google Client ID exists: $GOOGLE_CLIENT_ID"
-                            echo "Google Client Secret exists: ${GOOGLE_CLIENT_SECRET:0:3}***"
+                            echo "Google Client Secret exists: [MASKED]"
                             
                             # Ensure the secret values are not empty
                             if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
