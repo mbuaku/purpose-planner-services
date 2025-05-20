@@ -40,7 +40,7 @@ This change fixes the duplicate `/api` prefix issue when routing auth requests.
 3. **Force rollout if needed**:
    ```bash
    # Restart the gateway service pods to pick up the new configuration
-   kubectl rollout restart deployment gateway-service -n production
+   kubectl rollout restart deployment gateway-service -n development
    ```
 
 ## Testing
