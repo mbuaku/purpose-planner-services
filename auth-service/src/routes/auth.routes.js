@@ -64,7 +64,12 @@ router.get('/check', authMiddleware.authenticate, (req, res) => {
 });
 
 // Only add Google authentication routes if credentials are configured
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+const isGoogleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+console.log('Google authentication routes configuration status:', isGoogleConfigured ? 'ENABLED' : 'DISABLED');
+
+if (isGoogleConfigured) {
+  console.log('Setting up Google authentication routes with passport');
+  
   /**
    * @route GET /api/auth/google
    * @desc Authenticate with Google
@@ -72,6 +77,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
    */
   router.get(
     '/google',
+    (req, res, next) => {
+      console.log('Google auth route accessed');
+      next();
+    },
     passport.authenticate('google', {
       scope: ['profile', 'email'],
       prompt: 'select_account',
@@ -110,16 +119,32 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 } else {
   // Add placeholder routes for when Google auth is not configured
   router.get('/google', (req, res) => {
+    console.error('Google authentication not configured - route accessed without credentials');
+    console.error('GOOGLE_CLIENT_ID present:', Boolean(process.env.GOOGLE_CLIENT_ID));
+    console.error('GOOGLE_CLIENT_SECRET present:', Boolean(process.env.GOOGLE_CLIENT_SECRET));
+    
     res.status(501).json({
       success: false,
-      message: 'Google authentication not configured'
+      message: 'Google authentication not configured',
+      debug: {
+        clientIdExists: Boolean(process.env.GOOGLE_CLIENT_ID),
+        clientSecretExists: Boolean(process.env.GOOGLE_CLIENT_SECRET),
+        callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'not set'
+      }
     });
   });
   
   router.get('/google/callback', (req, res) => {
+    console.error('Google authentication callback accessed but not configured');
+    
     res.status(501).json({
       success: false,
-      message: 'Google authentication not configured'
+      message: 'Google authentication not configured',
+      debug: {
+        clientIdExists: Boolean(process.env.GOOGLE_CLIENT_ID),
+        clientSecretExists: Boolean(process.env.GOOGLE_CLIENT_SECRET),
+        callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'not set'
+      }
     });
   });
 }

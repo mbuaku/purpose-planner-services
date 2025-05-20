@@ -7,6 +7,8 @@ pipeline {
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         SONARQUBE_URL = "http://192.168.254.110:9000"
         KUBECONFIG = credentials('kubeconfig')
+        // Add a reminder to check Docker credentials if push fails
+        DOCKERHUB_PUSH_REMINDER = "If Docker push fails, verify credentials in Jenkins"
     }
     
     stages {
@@ -206,18 +208,54 @@ pipeline {
                         string(credentialsId: 'google-client-id', variable: 'GOOGLE_CLIENT_ID'),
                         string(credentialsId: 'google-client-secret', variable: 'GOOGLE_CLIENT_SECRET')
                     ]) {
-                        sh """
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create secret generic app-secrets \
-                                --from-literal=jwt-secret=your-secret-key-here \
-                                --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \
-                                --from-literal=google-client-id="${GOOGLE_CLIENT_ID}" \
-                                --from-literal=google-client-secret="${GOOGLE_CLIENT_SECRET}" \
+                        sh '''
+                            echo "Creating secrets with Google Auth credentials..."
+                            echo "Google Client ID exists: $GOOGLE_CLIENT_ID"
+                            echo "Google Client Secret exists: ${GOOGLE_CLIENT_SECRET:0:3}***"
+                            
+                            # Ensure the secret values are not empty
+                            if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+                                echo "ERROR: Google credentials not found or are empty"
+                                exit 1
+                            fi
+                            
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create secret generic app-secrets \\
+                                --from-literal=jwt-secret=your-secret-key-here \\
+                                --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \\
+                                --from-literal=google-client-id="$GOOGLE_CLIENT_ID" \\
+                                --from-literal=google-client-secret="$GOOGLE_CLIENT_SECRET" \\
                                 -n development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
-                        """
+                            
+                            # Verify the secret was created properly
+                            echo "Verifying app-secrets was created with Google credentials..."
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get secret app-secrets -n development -o yaml | grep -i google
+                            
+                            # Force restart the auth-service pods to pick up the new credentials
+                            echo "Restarting auth-service deployment to apply new credentials..."
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
+                            
+                            # Wait for new pods to be created
+                            echo "Waiting for auth-service deployment to restart..."
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n development --timeout=60s
+                        '''
                     }
                     
                     // Deploy all services
+                    echo "Deploying all services with updated configurations..."
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
+                    
+                    # Apply a specific fix for auth service to ensure it picks up the Google credentials
+                    echo "Applying specific fix for auth-service configuration..."
+                    sh '''
+                        echo "Directly patching auth-service deployment with Google credentials from secrets..."
+                        # Ensure auth-service is properly using the credentials from secrets
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG patch deployment auth-service -n development --type=json -p='[
+                            {"op": "replace", "path": "/spec/template/spec/containers/0/env/4/valueFrom/secretKeyRef/key", "value": "google-client-id"},
+                            {"op": "replace", "path": "/spec/template/spec/containers/0/env/5/valueFrom/secretKeyRef/key", "value": "google-client-secret"}
+                        ]'
+                        # Force a restart one more time after everything is deployed
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
+                    '''
                     
                     // Update deployments with specific image tags
                     def services = ['auth-service', 'gateway-service', 'financial-service', 
@@ -292,6 +330,21 @@ pipeline {
                         }
                         
                         $KUBECTL --kubeconfig=$KC get svc -n development
+                        echo ""
+                        
+                        # Verify Google Auth configuration
+                        echo "Checking Google Auth configuration..."
+                        AUTH_POD=$($KUBECTL --kubeconfig=$KC get pods -n development -l app=auth-service -o name | head -n 1)
+                        if [ ! -z "$AUTH_POD" ]; then
+                            echo "Checking environment variables in $AUTH_POD..."
+                            $KUBECTL --kubeconfig=$KC exec $AUTH_POD -n development -- printenv | grep -i google || echo "No Google environment variables found"
+                            
+                            echo "Checking auth-service logs for Google auth initialization..."
+                            $KUBECTL --kubeconfig=$KC logs $AUTH_POD -n development | grep -i "google\|oauth" || echo "No Google auth logs found"
+                        else
+                            echo "No auth-service pods found"
+                        fi
+                        
                         echo ""
                         echo "======================================"
                         echo "Backend Services Deployment Complete!"

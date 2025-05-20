@@ -31,6 +31,24 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: google-client-id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: google-client-secret
+        - name: GOOGLE_CALLBACK_URL
+          value: "https://api.elitessystems.com/api/auth/google/callback"
+        - name: BASE_URL 
+          value: "https://api.elitessystems.com"
+        - name: CLIENT_REDIRECT_URL
+          value: "https://elitessystems.com/login?token="
+        - name: ALLOWED_ORIGINS
+          value: "https://elitessystems.com,http://localhost:5173,http://localhost:3000"
         livenessProbe:
           httpGet:
             path: /health

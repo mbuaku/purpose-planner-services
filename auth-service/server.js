@@ -4,6 +4,12 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const passport = require('passport');
 
+// Debug environment variables
+console.log('DEBUG: Environment Variables Check:');
+console.log('GOOGLE_CLIENT_ID exists:', Boolean(process.env.GOOGLE_CLIENT_ID));
+console.log('GOOGLE_CLIENT_SECRET exists:', Boolean(process.env.GOOGLE_CLIENT_SECRET));
+console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 

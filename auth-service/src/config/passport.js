@@ -14,8 +14,18 @@ module.exports = function (app) {
   // Initialize Passport
   app.use(passport.initialize());
 
+  // Log Google OAuth configuration status
+  console.log('Google OAuth Configuration:');
+  console.log('- GOOGLE_CLIENT_ID present:', Boolean(process.env.GOOGLE_CLIENT_ID));
+  console.log('- GOOGLE_CLIENT_SECRET present:', Boolean(process.env.GOOGLE_CLIENT_SECRET));
+  console.log('- GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'not set');
+  
   // Configure Google Strategy if credentials are available
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    console.log('Configuring Google OAuth strategy with the following parameters:');
+    console.log('- clientID:', process.env.GOOGLE_CLIENT_ID.substring(0, 8) + '...');
+    console.log('- callbackURL:', process.env.GOOGLE_CALLBACK_URL);
+    
     passport.use(
       new GoogleStrategy(
         {
