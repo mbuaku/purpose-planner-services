@@ -1,0 +1,20 @@
+# Metrics Server for Kubernetes cluster
+# Enables HPA (Horizontal Pod Autoscaler) functionality
+# This is installed automatically by the Vagrant setup script
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+---
+# Note: Full Metrics Server manifests are applied from:
+# https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+#
+# Additional configuration for lab environment:
+# - Added --kubelet-insecure-tls flag for testing with self-signed certificates
+#
+# This file serves as documentation for the infrastructure components.
+# The actual installation is automated in the Vagrant setup script.

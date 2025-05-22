@@ -97,25 +97,62 @@ npm run dev
    docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```
 
-### Option 2: Kubernetes Deployment
+### Option 2: Kubernetes Deployment (Infrastructure as Code)
 
 Prerequisites:
-- Kubernetes cluster (e.g., EKS, GKE, or AKS)
+- Kubernetes cluster with Infrastructure as Code components:
+  - **Metrics Server** (automatically installed for HPA functionality)
+  - **NGINX Ingress Controller** (automatically installed for external routing)
+  - **cert-manager** (for SSL/TLS certificate management)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Helm](https://helm.sh/docs/intro/install/) (optional, for managing deployments)
 
-1. Apply Kubernetes manifests:
+#### Infrastructure Features
+- **HPA (Horizontal Pod Autoscaler)**: Automatic scaling based on resource usage
+- **Ingress Routing**: External access via `api.elitessystems.com` and `elitessystems.com`
+- **SSL/TLS**: Automatic Let's Encrypt certificate provisioning
+- **Resource Management**: CPU/memory requests and limits for all services
+- **Health Checks**: Liveness and readiness probes
+
+#### Deployment Steps
+
+1. Deploy infrastructure and application manifests:
    ```bash
-   kubectl apply -f k8s/
+   # Deploy storage (PVs, PVCs)
+   kubectl apply -f k8s-manifests/storage.yaml
+   
+   # Deploy infrastructure services (MongoDB, Redis)
+   kubectl apply -f k8s-manifests/infrastructure.yaml
+   
+   # Deploy application services
+   kubectl apply -f k8s-manifests/services/
+   
+   # Deploy namespaces and network policies
+   kubectl apply -f k8s-manifests/namespaces.yaml
+   
+   # Deploy ingress configuration
+   kubectl apply -f k8s-manifests/ingress.yaml
+   
+   # Deploy TLS configuration
+   kubectl apply -f k8s-manifests/tls-config.yaml
+   
+   # Deploy HPA configurations
+   kubectl apply -f k8s-manifests/hpa.yaml
    ```
 
 2. Verify deployments:
    ```bash
    kubectl get deployments
    kubectl get services
+   kubectl get ingress
+   kubectl get hpa  # Check autoscaling status
+   kubectl get certificates  # Check SSL certificate status
    ```
 
-3. Set up Ingress or Load Balancer as needed for your cluster
+3. Monitor scaling and resource usage:
+   ```bash
+   kubectl top pods  # Requires Metrics Server
+   kubectl describe hpa  # View autoscaling events
+   ```
 
 ### Option 3: Platform-as-a-Service (Heroku, Render, etc.)
 
@@ -164,16 +201,50 @@ Set up monitoring and logging for production:
 
 ## Scaling
 
-### Horizontal Scaling
+### Horizontal Pod Autoscaling (HPA)
 
-1. Add more instances of services to handle increased load
-2. Configure load balancing between instances
-3. Use container orchestration (Kubernetes, Docker Swarm) for automating scaling
+The application includes automatic horizontal scaling capabilities:
+
+#### Development Environment
+- **Min replicas**: 1, **Max replicas**: 3
+- **CPU threshold**: 70%
+- **Memory threshold**: 70%
+
+#### Production Environment  
+- **Min replicas**: 2, **Max replicas**: 10
+- **CPU threshold**: 60%
+- **Memory threshold**: 60%
+
+#### Monitoring Scaling Events
+```bash
+# View current HPA status
+kubectl get hpa
+
+# View scaling events
+kubectl describe hpa <service-name>
+
+# Monitor resource usage (requires Metrics Server)
+kubectl top pods
+kubectl top nodes
+```
 
 ### Vertical Scaling
 
-1. Increase resources (CPU, memory) for individual services
-2. Monitor resource usage and adjust as needed
+1. Increase resource requests and limits in deployment manifests
+2. Monitor resource usage and adjust as needed:
+   ```bash
+   kubectl describe pod <pod-name>
+   kubectl top pod <pod-name>
+   ```
+
+### Manual Scaling
+```bash
+# Scale a specific deployment manually
+kubectl scale deployment <deployment-name> --replicas=5
+
+# View scaling status
+kubectl get deployments
+```
 
 ## Troubleshooting
 

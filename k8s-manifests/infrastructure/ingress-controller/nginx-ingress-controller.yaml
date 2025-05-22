@@ -1,0 +1,17 @@
+# NGINX Ingress Controller for Purpose Planner Application
+# This is installed automatically by the Vagrant setup script
+# File kept for reference and manual deployment if needed
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+---
+# Note: Full NGINX Ingress Controller manifests are applied from:
+# https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+#
+# This file serves as documentation for the infrastructure components.
+# The actual installation is automated in the Vagrant setup script.

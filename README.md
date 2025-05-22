@@ -25,6 +25,10 @@ purpose-planner-services/
 - Node.js (v16+)
 - Docker and Docker Compose
 - MongoDB (provided via Docker)
+- **Kubernetes cluster with**:
+  - Metrics Server (for HPA functionality)
+  - NGINX Ingress Controller (for external routing)
+  - cert-manager (for SSL/TLS certificates)
 
 ### Installation
 
@@ -107,7 +111,31 @@ cd auth-service && npm test
 
 ## Deployment
 
-See the [Deployment Guide](./DEPLOYMENT.md) for information on deploying the services to production.
+### Infrastructure as Code Deployment
+
+This application uses modern Infrastructure as Code practices:
+
+- **HPA (Horizontal Pod Autoscaler)**: Automatic scaling based on CPU/memory usage
+- **Ingress Routing**: 
+  - `api.elitessystems.com` → API Gateway
+  - `elitessystems.com` → Frontend application
+- **SSL/TLS**: Automatic certificate management with Let's Encrypt
+- **Resource Management**: CPU and memory requests/limits for all services
+- **Health Checks**: Liveness and readiness probes for all services
+
+### Quick Deployment
+```bash
+# Deploy all services to Kubernetes
+kubectl apply -f k8s-manifests/
+
+# Verify HPA is working
+kubectl get hpa
+
+# Check ingress status
+kubectl get ingress
+```
+
+See the [Deployment Guide](./DEPLOYMENT.md) for detailed information on deploying the services to production.
 
 ## API Documentation
 
