@@ -252,7 +252,7 @@ pipeline {
                     
                     // Deploy all services
                     echo "Deploying all services with updated configurations..."
-                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/services/ -n ${NAMESPACE}'
                     
                     // Simply restart the auth service to ensure it picks up the Google credentials
                     echo "Restarting auth-service to ensure it picks up the Google credentials..."
