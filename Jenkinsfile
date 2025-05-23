@@ -1,6 +1,14 @@
 pipeline {
     agent any
     
+    parameters {
+        choice(
+            name: 'DEPLOY_NAMESPACE',
+            choices: ['development', 'production'],
+            description: 'Select the namespace to deploy to'
+        )
+    }
+    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKERHUB_REPO = 'mbuaku/purpose-planner-services'
@@ -9,6 +17,7 @@ pipeline {
         KUBECONFIG = credentials('kubeconfig')
         // Add a reminder to check Docker credentials if push fails
         DOCKERHUB_PUSH_REMINDER = "If Docker push fails, verify credentials in Jenkins"
+        NAMESPACE = "${params.DEPLOY_NAMESPACE ?: 'development'}"
     }
     
     stages {
@@ -173,6 +182,7 @@ pipeline {
             //     branch 'master'
             // }
             steps {
+                echo "Deploying to ${NAMESPACE} namespace..."
                 script {
                     // Install kubectl if not available
                     sh '''
@@ -195,7 +205,7 @@ pipeline {
                     // No need to copy kubeconfig, use it directly with --kubeconfig flag
                     
                     // Create namespace
-                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create namespace development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG create namespace ${NAMESPACE} --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -'
                     
                     // Deploy persistent volumes
                     sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f k8s-manifests/storage.yaml'
@@ -224,19 +234,19 @@ pipeline {
                                 --from-literal=mongodb-uri='mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin' \\
                                 --from-literal=google-client-id="$GOOGLE_CLIENT_ID" \\
                                 --from-literal=google-client-secret="$GOOGLE_CLIENT_SECRET" \\
-                                -n development --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
+                                -n ${NAMESPACE} --dry-run=client -o yaml | $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG apply -f -
                             
                             # Verify the secret was created properly
                             echo "Verifying app-secrets was created with Google credentials..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get secret app-secrets -n development -o yaml | grep -i google
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get secret app-secrets -n ${NAMESPACE} -o yaml | grep -i google
                             
                             # Force restart the auth-service pods to pick up the new credentials
                             echo "Restarting auth-service deployment to apply new credentials..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n ${NAMESPACE}
                             
                             # Wait for new pods to be created
                             echo "Waiting for auth-service deployment to restart..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n development --timeout=60s
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n ${NAMESPACE} --timeout=60s
                         '''
                     }
                     
@@ -249,11 +259,11 @@ pipeline {
                     sh '''
                         # Force restart auth-service one more time after everything is deployed
                         echo "Force restarting auth-service deployment..."
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n development
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n ${NAMESPACE}
                         
                         # Wait for pods to be ready
                         echo "Waiting for auth-service to be ready..."
-                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n development --timeout=90s
+                        $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n ${NAMESPACE} --timeout=90s
                     '''
                     
                     // Update deployments with specific image tags
@@ -264,12 +274,12 @@ pipeline {
                     for (service in services) {
                         sh """
                             echo "Updating ${service} to use image tag ${IMAGE_TAG}..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG set image deployment/${service} ${service}=${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} -n development
+                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG set image deployment/${service} ${service}=${DOCKERHUB_REPO}:${service}-${IMAGE_TAG} -n ${NAMESPACE}
                         """
                     }
                     
                     // Apply namespace to all resources
-                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG label namespace development purpose-planner=backend --overwrite'
+                    sh '$WORKSPACE/kubectl --kubeconfig=$KUBECONFIG label namespace ${NAMESPACE} purpose-planner=backend --overwrite'
                 }
             }
         }
@@ -286,59 +296,59 @@ pipeline {
                         export KC="$KUBECONFIG"
                         
                         echo "Checking pod status..."
-                        $KUBECTL --kubeconfig=$KC get pods -n development
+                        $KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE}
                         echo ""
                         echo "Checking pod images..."
-                        $KUBECTL --kubeconfig=$KC get pods -n development -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image
+                        $KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE} -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image
                         echo ""
                         
                         echo "Checking logs from failing pods..."
                         sleep 10  # Give pods time to start and potentially crash
-                        FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
+                        FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE} | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
                         for pod in $FAILING_PODS; do
                             echo "=== Current logs for $pod ==="
-                            $KUBECTL --kubeconfig=$KC logs $pod -n development --tail=50 || echo "No current logs available"
+                            $KUBECTL --kubeconfig=$KC logs $pod -n ${NAMESPACE} --tail=50 || echo "No current logs available"
                             echo ""
                             echo "=== Previous logs for $pod (from last crash) ==="
-                            $KUBECTL --kubeconfig=$KC logs $pod -n development --previous --tail=50 || echo "No previous logs available"
+                            $KUBECTL --kubeconfig=$KC logs $pod -n ${NAMESPACE} --previous --tail=50 || echo "No previous logs available"
                             echo ""
                             echo "=== Last state for $pod ==="
-                            $KUBECTL --kubeconfig=$KC describe pod $pod -n development | grep -A4 -i "last state" || echo "No last state info"
+                            $KUBECTL --kubeconfig=$KC describe pod $pod -n ${NAMESPACE} | grep -A4 -i "last state" || echo "No last state info"
                             echo ""
                         done
                         
                         echo ""
                         echo "Waiting for deployments (timeout: 60s)..."
-                        $KUBECTL --kubeconfig=$KC wait --for=condition=available --timeout=60s deployment --all -n development || {
+                        $KUBECTL --kubeconfig=$KC wait --for=condition=available --timeout=60s deployment --all -n ${NAMESPACE} || {
                             echo "Some deployments failed to become ready. Checking details..."
                             echo ""
                             echo "=== Failed Pods Status ==="
-                            $KUBECTL --kubeconfig=$KC get pods -n development | grep -v Running
+                            $KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE} | grep -v Running
                             echo ""
                             echo "=== Recent Events ==="
-                            $KUBECTL --kubeconfig=$KC get events -n development --sort-by=.lastTimestamp | tail -20
+                            $KUBECTL --kubeconfig=$KC get events -n ${NAMESPACE} --sort-by=.lastTimestamp | tail -20
                             echo ""
                             echo "=== Describe Failed Pods ==="
-                            FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n development | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
+                            FAILING_PODS=$($KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE} | grep -E "CrashLoopBackOff|Error" | awk '{print $1}')
                             for pod in $FAILING_PODS; do
                                 echo "--- Describing $pod ---"
-                                $KUBECTL --kubeconfig=$KC describe pod $pod -n development | grep -A 20 "Events:"
+                                $KUBECTL --kubeconfig=$KC describe pod $pod -n ${NAMESPACE} | grep -A 20 "Events:"
                                 echo ""
                             done
                             exit 1
                         }
                         
-                        $KUBECTL --kubeconfig=$KC get svc -n development
+                        $KUBECTL --kubeconfig=$KC get svc -n ${NAMESPACE}
                         echo ""
                         
                         echo "Checking Google Auth configuration..."
-                        AUTH_POD=$($KUBECTL --kubeconfig=$KC get pods -n development -l app=auth-service -o name | head -n 1)
+                        AUTH_POD=$($KUBECTL --kubeconfig=$KC get pods -n ${NAMESPACE} -l app=auth-service -o name | head -n 1)
                         if [ ! -z "$AUTH_POD" ]; then
                             echo "Checking environment variables in $AUTH_POD..."
-                            $KUBECTL --kubeconfig=$KC exec $AUTH_POD -n development -- printenv | grep -i google || echo "No Google environment variables found"
+                            $KUBECTL --kubeconfig=$KC exec $AUTH_POD -n ${NAMESPACE} -- printenv | grep -i google || echo "No Google environment variables found"
                             
                             echo "Checking auth-service logs for Google auth initialization..."
-                            $KUBECTL --kubeconfig=$KC logs $AUTH_POD -n development | grep -i "google" || echo "No Google auth logs found"
+                            $KUBECTL --kubeconfig=$KC logs $AUTH_POD -n ${NAMESPACE} | grep -i "google" || echo "No Google auth logs found"
                         else
                             echo "No auth-service pods found"
                         fi
@@ -346,6 +356,7 @@ pipeline {
                         echo ""
                         echo "======================================"
                         echo "Backend Services Deployment Complete!"
+                        echo "Deployed to: ${NAMESPACE} namespace"
                         echo "======================================"
                     ''')
                 }
