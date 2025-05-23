@@ -753,7 +753,7 @@ app.get('/', (req, res) => {
                 amount: parseFloat(document.getElementById('contributionAmount').value),
                 date: document.getElementById('contributionDate').value,
                 description: document.getElementById('contributionDescription').value
-              }),
+              })
             });
             
             const data = await res.json();
