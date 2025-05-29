@@ -135,7 +135,7 @@ kubectl get hpa
 kubectl get ingress
 ```
 
-See the [Deployment Guide](./DEPLOYMENT.md) for detailed information on deploying the services to production.
+See the [Deployment Guide](./docs/DEPLOYMENT.md) for detailed information on deploying the services to production.
 
 ## API Documentation
 

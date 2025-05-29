@@ -1,7 +1,7 @@
 pipeline {
     agent {
         dockerfile {
-            filename 'Dockerfile.jenkins'
+            filename 'jenkins/Dockerfile.jenkins'
             dir '.'
             args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
