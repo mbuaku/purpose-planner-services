@@ -163,6 +163,12 @@ pipeline {
         stage('Push to DockerHub') {
             steps {
                 script {
+                    // Re-login to Docker Hub before pushing
+                    sh """
+                        echo "\$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "\$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+                        echo "Docker login status: \$?"
+                    """
+                    
                     def services = ['auth-service', 'gateway-service', 'financial-service', 
                                   'spiritual-service', 'profile-service', 'schedule-service', 
                                   'dashboard-service']
