@@ -240,13 +240,13 @@ pipeline {
                             echo "Verifying app-secrets was created with Google credentials..."
                             $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG get secret app-secrets -n ${NAMESPACE} -o yaml | grep -i google
                             
-                            # Force restart the auth-service pods to pick up the new credentials
-                            echo "Restarting auth-service deployment to apply new credentials..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n ${NAMESPACE}
-                            
-                            # Wait for new pods to be created
-                            echo "Waiting for auth-service deployment to restart..."
-                            $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n ${NAMESPACE} --timeout=60s
+                            # # Force restart the auth-service pods to pick up the new credentials
+                            # echo "Restarting auth-service deployment to apply new credentials..."
+                            # $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/auth-service -n ${NAMESPACE}
+                            # 
+                            # # Wait for new pods to be created
+                            # echo "Waiting for auth-service deployment to restart..."
+                            # $WORKSPACE/kubectl --kubeconfig=$KUBECONFIG rollout status deployment/auth-service -n ${NAMESPACE} --timeout=60s
                         '''
                     }
                     
