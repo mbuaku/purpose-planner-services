@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-server
+  namespace: development
+data:
+  server.js: |
+    require('dotenv').config();
+    const express = require('express');
+    const cors = require('cors');
+    const mongoose = require('mongoose');
+    const passport = require('passport');
+    
+    // Debug environment variables
+    console.log('DEBUG: Environment Variables Check:');
+    console.log('GOOGLE_CLIENT_ID exists:', Boolean(process.env.GOOGLE_CLIENT_ID));
+    console.log('GOOGLE_CLIENT_SECRET exists:', Boolean(process.env.GOOGLE_CLIENT_SECRET));
+    console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
+    
+    const app = express();
+    const PORT = process.env.PORT || 3001;
+    
+    // Import routes
+    const authRoutes = require('./src/routes/auth.routes');
+    
+    // Middleware
+    app.use(cors({
+      origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+      credentials: true
+    }));
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true })); // Required for OAuth
+    
+    // Connect to MongoDB
+    mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    })
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log('MongoDB Connection Error:', err));
+    
+    // Health check route
+    app.get('/health', (req, res) => {
+      res.status(200).json({
+        status: 'success',
+        message: 'Auth Service is healthy',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
+    // Routes
+    app.use('/api/auth', authRoutes);
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`Auth Service running on port ${PORT}`);
+    });

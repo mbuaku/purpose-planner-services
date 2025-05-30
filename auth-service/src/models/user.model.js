@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema(
   {
@@ -21,14 +20,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
     },
-    password: {
-      type: String,
-      required: function() {
-        // Password is not required for social logins
-        return !this.googleId;
-      },
-      minlength: [8, 'Password must be at least 8 characters'],
-    },
+    // Password removed - Google OAuth only
     profileImage: {
       type: String,
       default: null,
@@ -42,9 +34,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    verificationToken: String,
-    resetPasswordToken: String,
-    resetPasswordExpires: Date,
+    // Email verification not needed with Google OAuth
     joinDate: {
       type: Date,
       default: Date.now,
@@ -53,8 +43,8 @@ const userSchema = new mongoose.Schema(
     // Social login fields
     googleId: {
       type: String,
+      required: [true, 'Google ID is required'],
       unique: true,
-      sparse: true, // Allow null/undefined values (not all users will have a googleId)
     },
     socialProfile: {
       provider: String,
@@ -77,27 +67,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash the password before saving
-userSchema.pre('save', async function (next) {
-  // Only hash the password if it has been modified or is new
-  if (!this.isModified('password')) return next();
-
-  try {
-    // Generate a salt
-    const salt = await bcrypt.genSalt(10);
-    
-    // Hash the password with the salt
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Method to compare password for login
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+// Password methods removed - Google OAuth only
 
 // Method to generate a formatted full name
 userSchema.methods.getFullName = function () {

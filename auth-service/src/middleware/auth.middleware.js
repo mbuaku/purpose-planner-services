@@ -1,12 +1,5 @@
 const jwt = require('jsonwebtoken');
-
-// Use User model if available, otherwise use in-memory database
-let User;
-try {
-  User = require('../models/user.model');
-} catch (error) {
-  console.log('Using in-memory database for authentication');
-}
+const User = require('../models/user.model');
 
 /**
  * Middleware to authenticate users
@@ -31,27 +24,13 @@ async function authenticate(req, res, next) {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'purpose_planner_secret_key_development_only');
 
-    let user;
-    
-    if (global.inMemoryDB) {
-      // Using in-memory database
-      user = global.inMemoryDB.findUserById(decoded.id);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid token or user does not exist',
-        });
-      }
-    } else {
-      // Using MongoDB
-      // Find user
-      user = await User.findById(decoded.id).select('-password');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid token or user does not exist',
-        });
-      }
+    // Find user in MongoDB
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token or user does not exist',
+      });
     }
 
     // Add user to request object

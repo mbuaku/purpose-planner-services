@@ -25,37 +25,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Required for OAuth
 
 // Connect to MongoDB
-// Temporarily disabled for development without MongoDB
-console.log('MongoDB connection disabled for development');
-
-// Mock database for development without MongoDB
-const inMemoryUsers = [];
-global.inMemoryDB = {
-  users: inMemoryUsers,
-  addUser: (user) => {
-    // Check for duplicate email
-    const existingUser = inMemoryUsers.find(u => u.email === user.email);
-    if (existingUser) {
-      throw new Error('Email already in use');
-    }
-    const newUser = { ...user, _id: Date.now().toString() };
-    inMemoryUsers.push(newUser);
-    return newUser;
-  },
-  findUserByEmail: (email) => {
-    return inMemoryUsers.find(u => u.email === email) || null;
-  },
-  findUserById: (id) => {
-    return inMemoryUsers.find(u => u._id === id) || null;
-  }
-};
-
-// mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// })
-// .then(() => console.log('MongoDB Connected'))
-// .catch(err => console.log('MongoDB Connection Error:', err));
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('MongoDB Connected'))
+.catch(err => console.log('MongoDB Connection Error:', err));
 
 // Health check route
 app.get('/health', (req, res) => {

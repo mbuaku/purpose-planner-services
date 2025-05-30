@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: development
+spec:
+  template:
+    spec:
+      containers:
+      - name: auth-service
+        env:
+        - name: ENABLE_MONGODB
+          value: "true"
+        command: ["/bin/sh"]
+        args: 
+        - -c
+        - |
+          # Create updated server.js that enables MongoDB
+          cat > /tmp/server.js << 'EOF'
+          require('dotenv').config();
+          const express = require('express');
+          const cors = require('cors');
+          const mongoose = require('mongoose');
+          const passport = require('passport');
+          
+          console.log('DEBUG: Environment Variables Check:');
+          console.log('GOOGLE_CLIENT_ID exists:', Boolean(process.env.GOOGLE_CLIENT_ID));
+          console.log('GOOGLE_CLIENT_SECRET exists:', Boolean(process.env.GOOGLE_CLIENT_SECRET));
+          console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
+          
+          const app = express();
+          const PORT = process.env.PORT || 3001;
+          
+          const authRoutes = require('./src/routes/auth.routes');
+          
+          app.use(cors({
+            origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+            credentials: true
+          }));
+          app.use(express.json());
+          app.use(express.urlencoded({ extended: true }));
+          
+          // Connect to MongoDB - ENABLED
+          mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/purpose-planner-auth', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+          })
+          .then(() => console.log('MongoDB Connected'))
+          .catch(err => console.log('MongoDB Connection Error:', err));
+          
+          app.get('/health', (req, res) => {
+            res.status(200).json({
+              status: 'success',
+              message: 'Auth Service is healthy',
+              timestamp: new Date().toISOString(),
+            });
+          });
+          
+          app.use('/api/auth', authRoutes);
+          
+          app.listen(PORT, () => {
+            console.log(`Auth Service running on port ${PORT}`);
+          });
+          EOF
+          
+          # Copy original server.js to backup
+          cp /app/server.js /app/server.js.bak
+          
+          # Use our updated server.js
+          cp /tmp/server.js /app/server.js
+          
+          # Start the application
+          npm start
