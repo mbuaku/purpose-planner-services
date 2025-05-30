@@ -1,170 +1,277 @@
-# Purpose Planner Services - Deployment Progress
+# Purpose Planner Services - Project Guide
 
-## Completed Tasks ✅
+## 🏗️ Project Overview
 
-### Infrastructure as Code Implementation
+Purpose Planner is a comprehensive life management platform for the Christian community, built with modern microservices architecture. The application helps users manage their spiritual growth, finances, schedules, and personal goals through a unified platform.
 
-#### High Priority Infrastructure Components
-1. **Automatic Metrics Server Installation** - DONE
-   - Enables HPA (Horizontal Pod Autoscaler) functionality
-   - Provides resource metrics for scaling decisions
-   - Integrated into cluster setup process
+### Key Features
+- **Spiritual Growth Tracking**: Bible reading, prayer sessions, journaling
+- **Financial Management**: Budgets, expenses, income tracking, savings goals
+- **Schedule Management**: Time-block scheduling with recurring events
+- **Personal Dashboard**: Unified view with customizable widgets
+- **Authentication**: JWT-based auth with Google OAuth integration
+- **API Gateway**: Centralized routing with rate limiting and caching
 
-2. **NGINX Ingress Controller Deployment** - DONE
-   - Handles external traffic routing
-   - Supports elitessystems.com and api.elitessystems.com domains
-   - SSL/TLS termination capabilities
+## 🚀 Infrastructure as Code
 
-3. **HPA (Horizontal Pod Autoscaler) Configuration** - DONE
-   - Development: 1-3 replicas, 70% CPU/memory thresholds
-   - Production: 2-10 replicas, 60% CPU/memory thresholds
-   - Automatic scaling based on resource usage
+The project implements modern Infrastructure as Code practices with automated provisioning:
 
-4. **Ingress Routing for Domain Management** - DONE
-   - elitessystems.com → Frontend application
-   - api.elitessystems.com → Backend API Gateway
-   - SSL/TLS certificate management with cert-manager
+### Automated Components
+1. **Kubernetes Cluster** (v1.30.13)
+   - 1 master node + 3 worker nodes
+   - Calico CNI for networking
+   - Automated via Vagrant provisioning
 
-### Application Deployment
-1. **Create Kubernetes deployment manifests for all microservices** - DONE
-   - All services have deployment manifests in `k8s-manifests/services/`
-   - Images use format: `mbuaku/purpose-planner-services:service-name-latest`
+2. **Metrics Server**
+   - Enables resource monitoring
+   - Powers Horizontal Pod Autoscaler
+   - Auto-installed during cluster setup
 
-2. **Set up ConfigMaps and Secrets for environment variables** - DONE
-   - Secrets are created via Jenkins pipeline
-   - Environment variables configured in each deployment
+3. **NGINX Ingress Controller**
+   - External traffic routing
+   - SSL/TLS termination
+   - Domain-based routing support
 
-3. **Configure persistent volumes for MongoDB and Redis** - DONE
-   - Created `storage.yaml` with PV and PVC definitions
-   - MongoDB: 10Gi storage
-   - Redis: 1Gi storage
+4. **Horizontal Pod Autoscaler (HPA)**
+   - Development: 1-3 replicas (70% CPU threshold)
+   - Production: 2-10 replicas (60% CPU threshold)
+   - Memory and CPU-based scaling
 
-4. **Set up Ingress configuration for API Gateway** - DONE
-   - Created `ingress-elitessystems.yaml` with domain configurations
-   - Development: api.dev.elitessystems.com
-   - Production: api.elitessystems.com (with TLS)
+### Domain Configuration
+- **Frontend**: elitessystems.com
+- **API Gateway**: api.elitessystems.com
+- **SSL/TLS**: Automated via cert-manager with Let's Encrypt
 
-5. **Create Jenkins pipeline for continuous deployment** - DONE
-   - Complete CI/CD pipeline in place
-   - Builds, tests, and deploys to Kubernetes
+## 🎯 Current Status
 
-6. **Set up staging and production namespaces** - DONE
-   - Created `namespaces.yaml` with namespaces, network policies, and resource quotas
-   - Staging: 10 CPU, 20Gi memory
-   - Production: 50 CPU, 100Gi memory
+### ✅ Completed Infrastructure
+- Kubernetes manifests for all 7 microservices
+- Persistent storage for MongoDB (10Gi) and Redis (1Gi)
+- ConfigMaps and Secrets management
+- Health checks and readiness probes
+- Resource limits and requests
+- Jenkins CI/CD pipeline
+- Namespace isolation with resource quotas
+- Network policies and RBAC
 
-7. **Configure SSL/TLS certificates for production** - DONE
-   - Created `tls-config.yaml` with cert-manager configurations
-   - Let's Encrypt staging and production issuers
+### 📋 Pending Tasks
+**Medium Priority:**
+- Prometheus & Grafana monitoring setup
+- ELK stack for log aggregation
+- Database backup strategy
 
-### Medium Priority
-1. **Create Kubernetes Services for internal communication** - DONE
-   - All services have ClusterIP services
-   - Gateway has NodePort (30000)
+**Low Priority:**
+- Deployment runbooks documentation
 
-2. **Set up health checks and readiness probes** - DONE
-   - All services configured with:
-     - Liveness probe: /health endpoint
-     - Readiness probe: /health endpoint
+## 🛠️ Development Workflow
 
-3. **Configure resource limits and requests** - DONE
-   - Gateway: 200m/256Mi requests, 500m/512Mi limits
-   - Other services: 100m/128Mi requests, 250m/256Mi limits
-   - MongoDB: 500m/1Gi requests, 1000m/2Gi limits
-   - Redis: 100m/128Mi requests, 250m/256Mi limits
+### Local Development
+```bash
+# Clone and setup
+git clone git@github.com:mbuaku/purpose-planner.git
+cd purpose-planner-services
+npm install
 
-4. **Implement horizontal pod autoscaling (HPA)** - DONE
-   - Created `hpa.yaml` with autoscaling configurations
-   - Dev: 1-3 replicas with 70% CPU/memory thresholds
-   - Prod: 2-10 replicas with 60% CPU/memory thresholds
-   - Integrated with Metrics Server for automatic scaling
+# Start with Docker Compose
+docker-compose up -d
 
-## Infrastructure as Code Features ✅
+# Access at http://localhost:3000
+```
 
-1. **Automatic Infrastructure Provisioning** - DONE
-   - Metrics Server automatically installed during cluster setup
-   - NGINX Ingress Controller deployed for external routing
-   - cert-manager installed for SSL/TLS certificate management
+### Testing & Quality
+```bash
+# Run all tests
+npm test
 
-2. **Domain-Based Routing** - DONE
-   - elitessystems.com for frontend application
-   - api.elitessystems.com for backend API Gateway
-   - SSL/TLS certificates automatically provisioned
+# Lint code
+npm run lint
 
-3. **Horizontal Pod Autoscaling** - DONE
-   - CPU and memory-based scaling policies
-   - Environment-specific scaling configurations
-   - Integration with cluster resource monitoring
+# Type checking
+npm run typecheck
+```
 
-## Pending Tasks 📋
+## 🚢 Deployment Guide
 
-### Medium Priority
-1. **Set up monitoring with Prometheus and Grafana**
-2. **Configure log aggregation with ELK stack**
-3. **Create backup strategy for databases**
+### Quick Kubernetes Deployment
+```bash
+# 1. Create namespaces
+kubectl apply -f k8s-manifests/namespaces.yaml
 
-### Low Priority
-1. **Document deployment procedures and runbooks**
+# 2. Deploy infrastructure
+kubectl apply -f k8s-manifests/storage.yaml
+kubectl apply -f k8s-manifests/infrastructure.yaml
 
-## Important Commands
+# 3. Create secrets
+kubectl create secret generic app-secrets \
+  --from-literal=jwt-secret="your-secret-key" \
+  --from-literal=mongodb-uri="mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin" \
+  -n development
+
+# 4. Deploy services
+kubectl apply -f k8s-manifests/services/
+
+# 5. Setup ingress and TLS
+kubectl apply -f k8s-manifests/ingress-elitessystems.yaml
+kubectl apply -f k8s-manifests/tls-config.yaml
+
+# 6. Enable auto-scaling
+kubectl apply -f k8s-manifests/hpa.yaml
+```
+
+### Verification Commands
+```bash
+kubectl get pods -n development        # Check pods
+kubectl get hpa -n development         # Verify auto-scaling
+kubectl get ingress -n development     # Check routing
+kubectl get certificates -n development # Verify SSL
+kubectl top pods -n development        # Monitor resources
+```
+
+## 📊 Service Architecture
+
+| Service | Port | Internal Port | Description |
+|---------|------|---------------|-------------|
+| Gateway | 30000 | 3000 | API Gateway - Main entry point |
+| Auth | - | 3001 | Authentication & Authorization |
+| Financial | - | 3002 | Budget & Expense Management |
+| Spiritual | - | 3003 | Prayer & Bible Study Tracking |
+| Profile | - | 3004 | User Profile Management |
+| Schedule | - | 3005 | Calendar & Event Management |
+| Dashboard | - | 3006 | Unified Dashboard & Widgets |
+
+### Infrastructure Services
+- **MongoDB**: Primary database with persistent storage
+- **Redis**: Caching and session management
+- **NGINX**: Ingress controller for routing
+- **cert-manager**: SSL/TLS certificate automation
+
+## 🔐 Security Features
+- JWT-based authentication across all services
+- Google OAuth integration
+- Rate limiting at API Gateway
+- CORS configuration
+- Network policies for pod isolation
+- Kubernetes secrets for sensitive data
+- RBAC for cluster access control
+
+## 🔧 CI/CD Pipeline
+
+Jenkins automates the complete deployment lifecycle:
+1. Code checkout from GitHub
+2. Dependency installation
+3. Unit and integration testing
+4. Docker image building
+5. Push to DockerHub registry
+6. Kubernetes deployment
+7. Health check verification
+
+### Docker Images
+All images follow the naming convention:
+```
+mbuaku/purpose-planner-services:service-name-latest
+```
+
+## 📝 Important Notes
+
+### Environment Variables
+Each service requires:
+- `PORT`: Service port number
+- `MONGODB_URI`: Database connection string
+- `JWT_SECRET`: Token signing key
+- `REDIS_URL`: Cache connection
+- `GOOGLE_CLIENT_ID`: OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: OAuth secret
+
+### Development Tips
+- Development namespace includes in-memory fallback for MongoDB
+- All services expose `/health` endpoints
+- Use `kubectl logs` for debugging
+- Check events with `kubectl get events --sort-by='.lastTimestamp'`
+
+### Production Considerations
+- Enable monitoring before going live
+- Configure backup strategies
+- Set up alerting rules
+- Review resource limits
+- Test auto-scaling under load
+- Verify SSL certificates
+
+## 📋 Quick Reference Commands
 
 ### Local Testing
 ```bash
 # Run all tests
 npm test
 
-# Lint and typecheck (if available)
+# Lint and typecheck
 npm run lint
 npm run typecheck
 ```
 
-### Infrastructure as Code Deployment Commands
+### Troubleshooting
 ```bash
-# Apply all Kubernetes manifests (Infrastructure as Code)
-kubectl apply -f k8s-manifests/storage.yaml
-kubectl apply -f k8s-manifests/infrastructure.yaml
-kubectl apply -f k8s-manifests/services/
-kubectl apply -f k8s-manifests/namespaces.yaml
-kubectl apply -f k8s-manifests/ingress-elitessystems.yaml  # Domain routing
-kubectl apply -f k8s-manifests/tls-config.yaml
-kubectl apply -f k8s-manifests/hpa.yaml  # Horizontal Pod Autoscaler
+# Check pod logs
+kubectl logs <pod-name> -n development
 
-# Verify Infrastructure as Code components
-kubectl get hpa  # Check autoscaling status
-kubectl get ingress  # Check domain routing
-kubectl top pods  # Verify Metrics Server (requires cluster with Metrics Server)
-kubectl get certificates  # Check SSL/TLS certificates
+# Describe pod for issues
+kubectl describe pod <pod-name> -n development
 
-# Create secrets (handled by Jenkins, but for manual deployment)
-kubectl create secret generic app-secrets \
-  --from-literal=jwt-secret="your-secret-key" \
-  --from-literal=mongodb-uri="mongodb://admin:password123@mongodb:27017/purpose-planner?authSource=admin" \
-  -n development
+# Check events
+kubectl get events -n development --sort-by='.lastTimestamp'
+
+# Test service connectivity
+kubectl exec -it <pod-name> -n development -- curl http://<service-name>:<port>/health
+
+# Port forward for debugging
+kubectl port-forward svc/gateway-service 3000:3000 -n development
 ```
 
-## Service Architecture
+### Monitoring
+```bash
+# Resource usage
+kubectl top nodes
+kubectl top pods -n development
 
-- **Gateway Service**: API Gateway (port 3000, exposed via NodePort 30000)
-- **Auth Service**: Authentication & Authorization (port 3001)
-- **Financial Service**: Budget & Expense Management (port 3002)
-- **Spiritual Service**: Prayer & Bible Study (port 3003)
-- **Profile Service**: User Profile Management (port 3004)
-- **Schedule Service**: Calendar & Events (port 3005)
-- **Dashboard Service**: Unified Dashboard (port 3006)
+# Check HPA status
+kubectl get hpa -n development -w
 
-## Infrastructure Services
+# View ingress logs
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
+```
 
-- **MongoDB**: Primary database with persistent storage
-- **Redis**: Caching and session storage
+## 🌐 Access Points
 
-## Infrastructure as Code Notes
+- **Local Development**: http://localhost:3000
+- **Kubernetes NodePort**: http://<node-ip>:30000
+- **Production Frontend**: https://elitessystems.com
+- **Production API**: https://api.elitessystems.com
+- **API Documentation**: https://api.elitessystems.com/api-docs
 
-- **Automatic Infrastructure Provisioning**: Metrics Server and NGINX Ingress Controller automatically installed
-- **Domain-Based Routing**: elitessystems.com and api.elitessystems.com configured via Ingress
-- **HPA Integration**: Horizontal Pod Autoscaler configured for automatic scaling based on CPU/memory usage
-- **SSL/TLS Automation**: cert-manager automatically provisions Let's Encrypt certificates
-- **Resource Management**: CPU and memory requests/limits configured for all services
-- **Health Monitoring**: All services use health checks at `/health` endpoint
-- **Security**: JWT authentication implemented across all services
-- **Environment Isolation**: Development namespace uses in-memory fallback if MongoDB is unavailable
-- **Scalability**: Environment-specific scaling policies (dev: 1-3 replicas, prod: 2-10 replicas)
+## 📁 Repository Structure
+
+```
+purpose-planner-services/
+├── */               # Microservices (auth, financial, spiritual, etc.)
+├── k8s-manifests/   # Kubernetes deployment configurations
+├── scripts/         # Utility and deployment scripts
+├── docs/            # Consolidated documentation
+├── api-docs/        # API documentation
+└── jenkins/         # CI/CD pipeline configurations
+```
+
+## 🆘 Common Issues & Solutions
+
+1. **Pods not starting**: Check resource limits and node capacity
+2. **MongoDB connection issues**: Verify PVC is bound and credentials are correct
+3. **Ingress not working**: Ensure NGINX controller is running and DNS is configured
+4. **HPA not scaling**: Verify Metrics Server is installed and running
+5. **Authentication failures**: Check JWT secret and service URLs
+
+## 📞 Support
+
+For issues or questions:
+- Check the [Troubleshooting Guide](./docs/TROUBLESHOOTING.md)
+- Review [Architecture Documentation](./docs/ARCHITECTURE.md)
+- Consult [Setup Guides](./docs/SETUP-GUIDES.md)
+
+Remember: Always test in development before deploying to production!
