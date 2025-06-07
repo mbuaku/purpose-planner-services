@@ -17,7 +17,7 @@ pipeline {
         KUBECONFIG = credentials('kubeconfig')
         // Add a reminder to check Docker credentials if push fails
         DOCKERHUB_PUSH_REMINDER = "If Docker push fails, verify credentials in Jenkins"
-        NAMESPACE = "${params.DEPLOY_NAMESPACE ?: 'development'}"
+        NAMESPACE = "${params.DEPLOY_NAMESPACE ?: 'purpose-planner-dev'}"
     }
     
     stages {
