@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice(
             name: 'DEPLOY_NAMESPACE',
-            choices: ['development', 'production'],
+            choices: ['purpose-planner-dev', 'purpose-planner-prod'],
             description: 'Select the namespace to deploy to'
         )
     }
